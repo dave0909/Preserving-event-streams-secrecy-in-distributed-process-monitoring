@@ -1,0 +1,27 @@
+//protoc --go_out=./consensus --go_opt=paths=source_relative   --go-grpc_out=./consensus --go-grpc_opt=paths=source_relative  consensus.proto
+
+syntax ="proto3";
+package rafTEE;
+
+message VoteRequest {
+  string body = 1;
+}
+
+message VoteReponse {
+  string body = 1;
+}
+
+message AppendEntriesRequest {
+  string body = 1;
+}
+
+message AppendEntriesResponse {
+  string body = 1;
+}
+
+
+
+service RafTEErpcService {
+  rpc RequestVoteRPC(VoteRequest) returns (VoteReponse) {}
+  rpc AppendEntriesRPC(AppendEntriesRequest) returns (AppendEntriesResponse) {}
+}
