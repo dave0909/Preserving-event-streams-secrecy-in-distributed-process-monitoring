@@ -1,35 +1,51 @@
 package rafTEE
-
-import (
-	"context"
-	"google.golang.org/grpc"
-	"log"
-	"net"
-)
-
-type RafTEErpcService struct {
-	UnimplementedRafTEErpcServiceServer
+type RPCMessage struct {
+	Term uint64
 }
 
-func (s *RafTEErpcService) RequestVoteRPC(ctx context.Context, in *VoteRequest) (*VoteReponse, error) {
-	log.Println("Received: ", in.Body)
-	return &VoteReponse{Body: "Hello From the RafTEErpcService!"}, nil
+type RequestVoteRequest struct {
+	RPCMessage
+
+	// Candidate requesting vote
+	CandidateId uint64
+
+	// Index of candidate's last log entry
+	LastLogIndex uint64
+
+	// Term of candidate's last log entry
+	LastLogTerm uint64
 }
 
-func (s *RafTEErpcService) AppendEntriesRPC(ctx context.Context, in *AppendEntriesRequest) (*AppendEntriesResponse, error) {
-	log.Println("Received 2: ", in.Body)
-	return &AppendEntriesResponse{Body: "Hello from the Server2!"}, nil
+type RequestVoteResponse struct {
+	RPCMessage
+
+	// True means candidate received vote
+	VoteGranted bool
 }
 
-func StartServer() {
-	lis, err := net.Listen("tcp", ":9000")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := RafTEErpcService{}
-	grpcServer := grpc.NewServer()
-	RegisterRafTEErpcServiceServer(grpcServer, &s)
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+type AppendEntriesRequest struct {
+	RPCMessage
+
+	// So follower can redirect clients
+	LeaderId uint64
+
+	// Index of log entry immediately preceding new ones
+	PrevLogIndex uint64
+
+	// Term of prevLogIndex entry
+	PrevLogTerm uint64
+
+	// Log entries to store. Empty for heartbeat.
+	Entries []Entry
+
+	// Leader's commitIndex
+	LeaderCommit uint64
+}
+
+type AppendEntriesResponse struct {
+	RPCMessage
+
+	// true if follower contained entry matching prevLogIndex and
+	// prevLogTerm
+	Success bool
 }

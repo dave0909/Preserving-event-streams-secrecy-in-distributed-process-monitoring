@@ -4,57 +4,30 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log"
-	"main/rafTEE"
-	"net/http"
 	"sync"
 )
 
-// State machine type TODO here we should model the process state instead of db
 type ProcessStateMachine struct {
+	//TODO here we should have the process state (eg., a petri net)
 	Db *sync.Map
-	//TODO here we should have something like ...  processModel petrinet
-	//This is the node identifier
+	//Identifier of the server
 	Server int
 }
 
 type commandKind uint8
 
 const (
-	//Set the state
+	//Set commands means that the client wants to set a key-value pair
 	SetCommand commandKind = iota
-	//Get the state
 	GetCommand
 )
 
-// Command type
 type Command struct {
 	Kind  commandKind
 	Key   string
 	Value string
 }
 
-// It is the function that will be called by the raft rafTEE algorithm
-func (s *ProcessStateMachine) Apply(cmd []byte) ([]byte, error) {
-	c := decodeCommand(cmd)
-	switch c.Kind {
-	case SetCommand:
-		s.Db.Store(c.Key, c.Value)
-		//TODO: Here we should compute the new state of the process using processStateMachine.value. Replace occurrence of db.Store.
-	case GetCommand:
-		value, ok := s.Db.Load(c.Key)
-		if !ok {
-			return nil, fmt.Errorf("Key not found")
-		}
-		return []byte(value.(string)), nil
-	default:
-		return nil, fmt.Errorf("Unknown Command: %x", cmd)
-	}
-
-	return nil, nil
-}
-
-// Encode the command to be sent to the raft rafTEE algorithm as a byte array
 func EncodeCommand(c Command) []byte {
 	msg := bytes.NewBuffer(nil)
 	err := msg.WriteByte(uint8(c.Kind))
@@ -79,8 +52,7 @@ func EncodeCommand(c Command) []byte {
 	return msg.Bytes()
 }
 
-// Decode the command from byte
-func decodeCommand(msg []byte) Command {
+func DecodeCommand(msg []byte) Command {
 	var c Command
 	c.Kind = commandKind(msg[0])
 
@@ -95,24 +67,21 @@ func decodeCommand(msg []byte) Command {
 	return c
 }
 
-// RafTEErpcService that handles read amd write requests to the cluster
-type httpServer struct {
-	raft *rafTEE.RafTEEserver
-	db   *sync.Map
-}
-
-// Method used by clients to update the process state TODO: this should be invoked by the event generator to submit events
-// TODO key value should not be sen t in a get request but in a post request
-func (hs httpServer) setHandler(w http.ResponseWriter, r *http.Request) {
-	var c Command
-	c.Kind = SetCommand
-	c.Key = r.URL.Query().Get("key")
-	c.Value = r.URL.Query().Get("value")
-
-	_, err := hs.raft.Apply([][]byte{EncodeCommand(c)})
-	if err != nil {
-		log.Printf("Could not write key-value: %s", err)
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
+// Function invoked by the advanceCommitIndex() method of the rafTEE component apply a command
+func (s *ProcessStateMachine) Apply(cmd []byte) ([]byte, error) {
+	c := DecodeCommand(cmd)
+	switch c.Kind {
+	case SetCommand:
+		s.Db.Store(c.Key, c.Value)
+	case GetCommand:
+		value, ok := s.Db.Load(c.Key)
+		if !ok {
+			return nil, fmt.Errorf("Key not found")
+		}
+		return []byte(value.(string)), nil
+	default:
+		return nil, fmt.Errorf("Unknown command: %x", cmd)
 	}
+
+	return nil, nil
 }

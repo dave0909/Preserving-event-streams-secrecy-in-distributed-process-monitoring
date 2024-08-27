@@ -2,12 +2,9 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"encoding/xml"
 	"fmt"
 	"github.com/veith/petrinet"
-	"google.golang.org/grpc"
-	"main/rafTEE"
 	"main/utils/pnml"
 	netPackage "net"
 	"os"
@@ -232,39 +229,28 @@ func main() {
 	prova.Fire(transitionIndex["Dispatch order"])
 	fmt.Println(prova.State)
 
-	//// Connect to the server on localhost at port 1234
-	//conn, err := netPackage.Dial("tcp", "localhost:8085")
-	//if err != nil {
-	//	fmt.Println("Error connecting:", err)
-	//	os.Exit(1)
-	//}
-	//defer conn.Close()
-	//
-	//fmt.Println("Connected to localhost:8085")
-	//
-	//for {
-	//	// Receive a response from the server
-	//	response, err := bufio.NewReader(conn).ReadString('\n')
-	//	if err != nil {
-	//		fmt.Println("Error reading from server:", err)
-	//		return
-	//	}
-	//
-	//	// Print the response
-	//	fmt.Print("Server response: ", response)
-	//}
-	var conn2 *grpc.ClientConn
-	conn2, err = grpc.Dial("localhost:9000", grpc.WithInsecure())
+	// Connect to the server on localhost at port 1234
+	conn, err := netPackage.Dial("tcp", "localhost:8085")
 	if err != nil {
 		fmt.Println("Error connecting:", err)
+		os.Exit(1)
 	}
-	defer conn2.Close()
-	c := rafTEE.NewRafTEErpcServiceClient(conn2)
-	response, err := c.RequestVoteRPC(context.Background(), &rafTEE.VoteRequest{Body: "Hello from the client!"})
-	if err != nil {
-		fmt.Println("Error sending message:", err)
+	defer conn.Close()
+
+	fmt.Println("Connected to localhost:8085")
+
+	for {
+		// Receive a response from the server
+		response, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading from server:", err)
+			return
+		}
+
+		// Print the response
+		fmt.Print("RafTEEserver response: ", response)
 	}
-	fmt.Println("Response from server:", response.Body)
+
 }
 
 func handleConnection(conn netPackage.Conn) {
