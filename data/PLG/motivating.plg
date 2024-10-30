@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- 
+
+WARNING: Do not manually edit this file, unless you know what you are doing!
+
+This file has been generated with libPlg v.2.0.5.
+Check https://github.com/delas/plg for sources and other stuff.
+
+ -->
+<process>
+	<!-- This is the list of all meta-attributes of the process -->
+	<meta>
+		<LibPLG_NAME>libPlg</LibPLG_NAME>
+		<libPLG_VERSION>2.0.5</libPLG_VERSION>
+		<name>Process_0j3pne0</name>
+		<id>il20k6b3vnvp02m2cgcu3j2dt4</id>
+	</meta>
+	<!-- This is the list of all actual process elements -->
+	<elements>
+		<startEvent id="0"/>
+		<task id="2" name="Retrieve goods from the stock (RGFS)">
+			<dataObject id="52" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="3" name="Select truck (ST)">
+			<dataObject id="197" direction="GENERATED"/>
+			<dataObject id="54" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="4" name="Fill in container (FC)">
+			<dataObject id="55" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="5" name="Drive to manufacturer (DM)">
+			<dataObject id="56" direction="GENERATED"/>
+			<dataObject id="459" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="6" name="Drive to costumer (DC)">
+			<dataObject id="460" direction="GENERATED"/>
+			<dataObject id="61" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="7" name="Inspect goods (IG)">
+			<dataObject id="64" direction="GENERATED"/>
+			<dataObject id="327" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="8" name="Purchase order generated (POC)">
+			<dataObject id="49" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="9" name="Purchase order received (POR)">
+			<dataObject id="50" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="10" name="Reserve shipment (RS)">
+			<dataObject id="51" direction="GENERATED"/>
+			<dataObject id="458" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="11" name="Shipment reservation received (SRR)">
+			<dataObject id="53" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="12" name="Truck reached manufacturer (TRM)">
+			<dataObject id="59" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="13" name="Check container (CC)">
+			<dataObject id="57" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="14" name="Verify attachment (VA)">
+			<dataObject id="60" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="15" name="Attach container to the truck (ACT)">
+			<dataObject id="58" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="16" name="Truck reached costumer (TRC)">
+			<dataObject id="326" direction="GENERATED"/>
+			<dataObject id="62" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="17" name="Detach container (DCO)">
+			<dataObject id="63" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="18" name="Confirm order reception (CIR)">
+			<dataObject id="65" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="19" name="Order reception confirmed (ORC)">
+			<dataObject id="66" direction="GENERATED"/>
+			<script/>
+		</task>
+		<gateway id="20" type="ParallelGateway"/>
+		<gateway id="21" type="ParallelGateway"/>
+		<gateway id="22" type="ParallelGateway"/>
+		<gateway id="23" type="ParallelGateway"/>
+		<endEvent id="1"/>
+		<sequenceFlow id="24" sourceRef="20" targetRef="2"/>
+		<sequenceFlow id="25" sourceRef="2" targetRef="21"/>
+		<sequenceFlow id="26" sourceRef="21" targetRef="4"/>
+		<sequenceFlow id="27" sourceRef="3" targetRef="5"/>
+		<sequenceFlow id="28" sourceRef="5" targetRef="12"/>
+		<sequenceFlow id="29" sourceRef="6" targetRef="16"/>
+		<sequenceFlow id="30" sourceRef="0" targetRef="8"/>
+		<sequenceFlow id="31" sourceRef="8" targetRef="9"/>
+		<sequenceFlow id="32" sourceRef="9" targetRef="20"/>
+		<sequenceFlow id="33" sourceRef="20" targetRef="10"/>
+		<sequenceFlow id="34" sourceRef="23" targetRef="21"/>
+		<sequenceFlow id="35" sourceRef="23" targetRef="11"/>
+		<sequenceFlow id="36" sourceRef="11" targetRef="3"/>
+		<sequenceFlow id="37" sourceRef="4" targetRef="13"/>
+		<sequenceFlow id="38" sourceRef="12" targetRef="22"/>
+		<sequenceFlow id="39" sourceRef="13" targetRef="22"/>
+		<sequenceFlow id="40" sourceRef="22" targetRef="15"/>
+		<sequenceFlow id="41" sourceRef="15" targetRef="14"/>
+		<sequenceFlow id="42" sourceRef="14" targetRef="6"/>
+		<sequenceFlow id="43" sourceRef="16" targetRef="17"/>
+		<sequenceFlow id="44" sourceRef="17" targetRef="7"/>
+		<sequenceFlow id="45" sourceRef="7" targetRef="18"/>
+		<sequenceFlow id="46" sourceRef="19" targetRef="1"/>
+		<sequenceFlow id="47" sourceRef="18" targetRef="19"/>
+		<sequenceFlow id="48" sourceRef="10" targetRef="23"/>
+		<dataObject id="64" owner="7" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="65" owner="18" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="66" owner="19" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="197" owner="3" name="license_first_issue" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange, randint
+
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+    samples=["2023-10-03T16:27:33.682+02:00","2017-10-03T16:27:33.682+02:00"]
+    return samples[0]
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="326" owner="16" name="receipt_time" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	
+	return "2024-10-03T16:00:33.682+02:00"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="327" owner="7" name="inspection_time" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "2024-10-03T16:30:33.682+02:00"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="458" owner="10" name="cost" type="IntegerDataObject">
+			<script>
+			<![CDATA[
+from random import randint
+# This Python script is called for the generation of the integer data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return 1000
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="459" owner="5" name="km_distance" type="IntegerDataObject">
+			<script>
+			<![CDATA[
+from random import randint
+# This Python script is called for the generation of the integer data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return 300
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="460" owner="6" name="km_distance" type="IntegerDataObject">
+			<script>
+			<![CDATA[
+from random import randint
+# This Python script is called for the generation of the integer data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return 10
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="49" owner="8" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="50" owner="9" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="51" owner="10" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="52" owner="2" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="53" owner="11" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="54" owner="3" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="55" owner="4" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="56" owner="5" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="57" owner="13" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="58" owner="15" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="59" owner="12" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="60" owner="14" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="61" owner="6" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="62" owner="16" name="organization" value="organization_A" type="DataObject"/>
+		<dataObject id="63" owner="17" name="organization" value="organization_A" type="DataObject"/>
+	</elements>
+</process>
