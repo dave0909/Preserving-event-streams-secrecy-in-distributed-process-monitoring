@@ -28,6 +28,7 @@ Check https://github.com/delas/plg for sources and other stuff.
 			<script/>
 		</task>
 		<task id="4" name="Fill in container (FC)">
+			<dataObject id="806" direction="GENERATED"/>
 			<dataObject id="55" direction="GENERATED"/>
 			<script/>
 		</task>
@@ -68,6 +69,7 @@ Check https://github.com/delas/plg for sources and other stuff.
 			<script/>
 		</task>
 		<task id="13" name="Check container (CC)">
+			<dataObject id="807" direction="GENERATED"/>
 			<dataObject id="57" direction="GENERATED"/>
 			<script/>
 		</task>
@@ -213,6 +215,36 @@ from random import randint
 
 def generate(caseId):
 	return 10
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="806" owner="4" name="logistics_operator" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "logistics_operator_00"
+
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="807" owner="13" name="logistics_operator" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "logistics_operator_00"
+
 			]]>
 			</script>
 		</dataObject>

@@ -2,7 +2,6 @@ package processStateManager
 
 import (
 	"fmt"
-	"log"
 	"main/complianceCheckingLogic"
 	"main/utils/xes"
 	"main/workflowLogic"
@@ -18,7 +17,9 @@ type ProcessState struct {
 	//List of all the events
 	Events []Event
 	//Compliance checking violations
-	ComplianceCheckingViolations map[string]map[string]bool
+	//ComplianceCheckingViolations map[string]map[string]bool
+	//Compliance checking violations
+	ComplianceCheckingViolations map[string][]ComplianceCheckingViolation
 }
 
 // Struct Event
@@ -63,16 +64,20 @@ type ProcessStateManager struct {
 
 // Init a new ProcessStateManager
 func InitProcessStateManager(eventChannel chan xes.Event) ProcessStateManager {
-	ccLogic, cNames := complianceCheckingLogic.InitComplianceCheckingLogic()
+	//ccLogic, cNames := complianceCheckingLogic.InitComplianceCheckingLogic()
+	ccLogic, _ := complianceCheckingLogic.InitComplianceCheckingLogic()
 	psm := ProcessStateManager{
 		WorkflowLogic:           workflowLogic.InitWorkflowLogic(),
 		ComplianceCheckingLogic: ccLogic,
 		EventChannel:            eventChannel,
 	}
-	ccViolation := map[string]map[string]bool{}
-	for _, name := range cNames {
-		ccViolation[name] = map[string]bool{}
-	}
+	//ccViolation := map[string]map[string]bool{}
+	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
+
+	ccViolation := map[string][]ComplianceCheckingViolation{}
+	//for _, name := range cNames {
+	//	ccViolation[name] = map[string]ComplianceCheckingViolation{}
+	//}
 	ps := ProcessState{
 		Cases: map[string]bool{},
 		WfState: WorkflowState{
@@ -133,22 +138,23 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	_, wfViolated := psm.ProcessState.WfState.WorkflowViolations[caseId]
 	if wfViolated {
 		//Append the current event to the erroneous sequence
-		wfViolation := psm.ProcessState.WfState.WorkflowViolations[caseId]
-		wfViolation.ErroneousSequence = append(wfViolation.ErroneousSequence, eventId)
-		psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
-		fmt.Println("Erronous sequence updated for case: ", caseId, " event: ", eventId)
-		return
-	}
-	//Fire the transition associated with the event
-	error := psm.WorkflowLogic.FireTokenIdWithTransitionName(eventId, psm.ProcessState.WfState.CaseTokenId[caseId])
-	if error != nil {
-		//If the transition failed, generate a new workflow violation
-		psm.initWorkflowViolation(eventId, caseId, timestamp, error)
-		fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
+		//TODO: UNCOMMENT THIS TO KEEP TRACK OF THE ERRONEOUS SEQUENCE
+		//wfViolation := psm.ProcessState.WfState.WorkflowViolations[caseId]
+		//wfViolation.ErroneousSequence = append(wfViolation.ErroneousSequence, eventId)
+		//psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
+
 	} else {
-		//If the transition was successful, update the workflow state
-		psm.updateWorkflowState(caseId)
-		fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
+		//Fire the transition associated with the event
+		error := psm.WorkflowLogic.FireTokenIdWithTransitionName(eventId, psm.ProcessState.WfState.CaseTokenId[caseId])
+		if error != nil {
+			//If the transition failed, generate a new workflow violation
+			psm.initWorkflowViolation(eventId, caseId, timestamp, error)
+			fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
+		} else {
+			//If the transition was successful, update the workflow state
+			psm.updateWorkflowState(caseId)
+			//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
+		}
 	}
 	elaboratedLog := psm.prepareEventLog()
 	violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
@@ -157,13 +163,47 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		for caseId, _ := range castedResult {
 			//TODO: be carefull here, we are assuming that each case id in the constraint map is violation (case:true)
 			//TODO: I'm not sure about this, i'don't know if there may be cases in which case:false (no violation). CHECK.
-			if !psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] {
-				log.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
-				psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] = true
-				//TODO: test all the constraints
+			//Previous version 2. Chek if the violation is already in the violations map
+			//if _, ok := psm.ProcessState.ComplianceCheckingViolations[constraint][caseId]; !ok {
+			//	//If the violation is not in the map, add it
+			//	psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] = ComplianceCheckingViolation{
+			//		ViolatedConstraint: constraint,
+			//		InvolvedCase:       caseId,
+			//		Timestamp:          timestamp,
+			//	}
+			//}
+			//Previous version 1
+			//if !psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] {
+			//	log.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
+			//	psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] = true
+			//	//TODO: test all the constraints
+			//}
+			//Check if the case has already a compliance checkiong violation for the given constraint
+			if _, ok := psm.ProcessState.ComplianceCheckingViolations[caseId]; !ok {
+				psm.ProcessState.ComplianceCheckingViolations[caseId] = []ComplianceCheckingViolation{}
 			}
+			//Chek if the case has already a violation for the given constraint
+			violated := false
+			for _, violation := range psm.ProcessState.ComplianceCheckingViolations[caseId] {
+				if violation.ViolatedConstraint == constraint {
+					violated = true
+					break
+				}
+			}
+			if !violated {
+				//If the case has not a violation for the given constraint, add it
+				psm.ProcessState.ComplianceCheckingViolations[caseId] = append(psm.ProcessState.ComplianceCheckingViolations[caseId], ComplianceCheckingViolation{
+					ViolatedConstraint: constraint,
+					InvolvedCase:       caseId,
+					Timestamp:          timestamp,
+				})
+				fmt.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
+			}
+
 		}
+
 	}
+	psm.PrintProcessState()
 
 }
 func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {
@@ -189,11 +229,10 @@ func (psm *ProcessStateManager) initWorkflowViolation(eventId string, caseId str
 
 	//Generate a new workflow violation with the current event
 	wfViolation := WorkflowViolation{
-		GeneratedByEvent:     eventId,
-		GeneratedByCase:      caseId,
-		Timestamp:            timestamp,
-		ViolationDescription: error.Error(),
-		ErroneousSequence:    []string{eventId},
+		//GeneratedByEvent:  eventId,
+		GeneratedByCase: caseId,
+		Timestamp:       timestamp,
+		//ErroneousSequence: []string{eventId},
 	}
 	//Add the new workflow violation to the workflow violations map
 	psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
@@ -235,4 +274,12 @@ func (psm *ProcessStateManager) WaitForEvents() {
 		event := <-psm.EventChannel
 		psm.HandleEvent(event.ActivityID, event.CaseID, event.Timestamp, event.Attributes)
 	}
+}
+
+// function that print the process state nicely
+func (psm *ProcessStateManager) PrintProcessState() {
+	fmt.Println("Printing process state")
+	fmt.Println("Next activities", psm.ProcessState.WfState.expectNextActivities)
+	fmt.Println("Control Flow Violations", psm.ProcessState.WfState.WorkflowViolations)
+	fmt.Println("Compliance Checking violations", psm.ProcessState.ComplianceCheckingViolations)
 }

@@ -1,0 +1,15 @@
+{
+  "activity_name": "concept:name",
+  "activity_timestamp": "time:timestamp",
+  "case_id": "concept:name",
+  "attribute_extraction": {
+    "Select truck (ST)": ["license_firt_issue"],
+    "Reserve shipment (RS)": ["cost"],
+    "Fill in container (FC)": ["logistics_operator"],
+    "Check container (CC)": ["logistics_operator"],
+    "Drive to manufacturer (DM)": ["km_distance"],
+    "Drive to costumer (DC)": ["km_distance"],
+    "Truck reached costumer (TRC)": ["receipt_time"],
+    "Inspect goods (IG)": ["inspection_time"]
+  }
+}

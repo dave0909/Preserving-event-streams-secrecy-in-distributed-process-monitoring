@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"main/eventDispatcher"
 	"main/processStateManager"
 	"main/utils/attestation"
+	"main/utils/test"
 	"main/utils/xes"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -38,15 +44,57 @@ func main() {
 	////	psm.HandleEvent(parsed_event.ActivityID, parsed_event.CaseID, parsed_event.Timestamp, parsed_event.Attributes)
 	////	//fmt.Println("Final Process State:", psm.ProcessState)
 	////}
-
 	addr := os.Args[1]
+	manifestFileName := os.Args[2]
+	simulationMode := os.Args[3]
+	testMode := os.Args[4]
+	if testMode == "true" {
+		test.TEST_MODE = true
+		_, cancel := context.WithCancel(context.Background())
+		go test.PrintRamUsage(cancel)
+	}
+	//Parse the boolean value of the simulation mode
+	simulationModeBool, err := strconv.ParseBool(simulationMode)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Simulation mode:", simulationModeBool)
+	attribute_extractors := make(map[string]interface{})
+	if manifestFileName != "" {
+		attribute_extractors = parseExtractionManifest(manifestFileName)
+	} else {
+		attribute_extractors = nil
+	}
 	eventChannel := make(chan xes.Event)
 	psm := processStateManager.InitProcessStateManager(eventChannel)
-	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription)}
+	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors}
 	go eventDispatcher.StartRPCServer(addr)
 	eventDispatcher.SubscribeTo("localhost:6869")
 	psm.WaitForEvents()
+}
 
+func parseExtractionManifest(manifestFileName string) map[string]interface{} {
+	manifestFile, err := os.Open(manifestFileName)
+	if err != nil {
+		fmt.Println("Error opening manifest file:", err)
+		return nil
+	}
+	defer manifestFile.Close()
+	byteValue, err := ioutil.ReadAll(manifestFile)
+	if err != nil {
+		fmt.Println("Error reading manifest file:", err)
+		return nil
+	}
+	var manifest map[string]interface{}
+	err = json.Unmarshal(byteValue, &manifest)
+	if err != nil {
+		fmt.Println("Error unmarshalling manifest file:", err)
+		return nil
+	}
+
+	//fmt.Println("Parsed manifest:", manifest)
+	attribute_extractors := manifest["attribute_extraction"].(map[string]interface{})
+	return attribute_extractors
 }
 
 //func readEventStream(psm processStateManager.ProcessStateManager, conn net.Conn) {

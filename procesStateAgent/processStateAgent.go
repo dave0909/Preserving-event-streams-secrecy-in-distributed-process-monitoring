@@ -73,9 +73,10 @@ func (psa *ProcessStateAgent) readEventStream(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	for {
 		event, err := reader.ReadString('\n')
+		fmt.Println("Event received: ", event)
 		if err != nil {
 			fmt.Println("Error reading from server:", err)
-			return
+			continue
 		}
 		if err != nil {
 			log.Fatalf("Failed to parse XES data: %v", err)
@@ -97,11 +98,6 @@ func (psa *ProcessStateAgent) sendEvent(eventString string, client rpc.Client) {
 }
 
 func (psa *ProcessStateAgent) broadcastEvent(eventString string) {
-	//for _, client := range psa.ProcessVaultConnections {
-	//
-	//	psa.sendEvent(eventString, client)
-	//}
-	//for each subscribed ProcessVault
 	for _, sub := range psa.Subscriptions {
 		lastHeartbeat := sub.Heartbeats[len(sub.Heartbeats)-1]
 		provisioningKey := lastHeartbeat.ProvisioningKey
@@ -109,7 +105,7 @@ func (psa *ProcessStateAgent) broadcastEvent(eventString string) {
 		if err != nil {
 			log.Fatalf("Error encrypting event: %v", err)
 		}
-		psa.sendEvent(encryptedEvent, *sub.ClientConnection)
+		go psa.sendEvent(encryptedEvent, *sub.ClientConnection)
 	}
 }
 
@@ -203,12 +199,10 @@ func (psa *ProcessStateAgent) ReceiveHeartbeat(evidence *attestation.Evidence, r
 				sub.Heartbeats = append(sub.Heartbeats, *evidence)
 				psa.Subscriptions[i] = sub // Update the subscription in the slice
 				*reply = "heartbeat received"
-				fmt.Println("Heartbeat ", evidence, "received and appraised")
 				break
 			} else {
 				*reply = "Subscription not found"
 			}
-			fmt.Println(sub.Heartbeats)
 		}
 	} else {
 		*reply = "Heartbeat verification failed not verified"

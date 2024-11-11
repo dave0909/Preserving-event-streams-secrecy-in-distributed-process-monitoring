@@ -34,8 +34,10 @@ def handle_event_data(host, port):
                             log= xes_importer.deserialize(event)
                             if log[0][0]['organization'] in orgs_port.keys():
                                 port_queues[orgs_port[log[0][0]['organization']]].put(event)
-
+                            else:
+                                port_queues[8085].put(event)
                         except Exception as e:
+                            print(f"Error: {e}")
                             if type(e).__name__=='XMLSyntaxError':
                                 event_splitted = event
                             continue
@@ -70,7 +72,7 @@ def server(port, message_queue):
 
 if __name__ == "__main__":
     # List of ports
-    ports = [8085, 8086,8087]
+    ports = [8085,8086,8087]
     # Start servers on specified ports
     for port in ports:
         server_thread = threading.Thread(target=server, args=(port, port_queues[port]))

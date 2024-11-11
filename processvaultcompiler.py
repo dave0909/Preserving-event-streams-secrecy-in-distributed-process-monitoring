@@ -6,6 +6,8 @@ import pm4py
 
 import uuid
 from enum import Enum
+
+import json
 from pm4py.objects.petri_net.utils import reduction
 from pm4py.objects.petri_net.obj import PetriNet, Marking
 from pm4py.objects.petri_net.utils.petri_utils import add_arc_from_to
@@ -551,11 +553,11 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interfa
 
 
 """
-python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969
+python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true
 """
 
 def main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 9:
         print("Usage: python processvaultcompiler.py <bpmn_file_path> <output_go_file_path>")
         sys.exit(1)
 
@@ -564,6 +566,9 @@ def main():
     constraint_folder_path=sys.argv[3]
     output_go_file_path_compliance = sys.argv[4]
     event_dispatcher_address= sys.argv[5]
+    extraction_manifest_file_path = sys.argv[6]
+    isInSimulation = sys.argv[7]
+    isInTesting = sys.argv[8]
 
     control_flow_logic = generate_control_flow_logic(bpmn_file_path)
     compliance_checking_logic = generate_compliance_checking_logic(constraint_folder_path)
@@ -580,14 +585,19 @@ def main():
     with open(output_go_file_path, 'w') as go_file:
         go_file.write(control_flow_logic)
 
-    # Set permissions to read and write for everyone (666)
-    os.chmod(output_go_file_path, 0o666)
 
+    #TODO: we should add the extraciton manifest file differently to the process vault
+    #Set permissions to read and write for everyone (666)
+    os.chmod(output_go_file_path, 0o666)
+    if isInSimulation=="true":
+        command="ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting
+    else:
+        command="ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting
     # Execute the build and run commands
     try:
         print("Building and running the Process Vault...")
         subprocess.run(
-            "ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address,
+            command,
             shell=True,
             check=True
         )

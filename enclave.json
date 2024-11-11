@@ -6,7 +6,20 @@
  "executableHeap": false,
  "productID": 1,
  "securityVersion": 1,
- "mounts": null,
+ "mounts": [
+  {
+   "source": "./data/output",
+   "target": "/data/output",
+   "type": "hostfs",
+   "readOnly": false
+  },
+  {
+   "source": "./data/input",
+   "target": "/data/input",
+   "type": "hostfs",
+   "readOnly": false
+  }
+ ],
  "env": null,
  "files": null
 }

@@ -22,9 +22,10 @@ import (
 // go run eventDispatcher.go localhost:6969
 // EventDispatcher struct
 type EventDispatcher struct {
-	EventChannel  chan xes.Event
-	Subscriptions map[string][]attestation.Subscription
-	Address       string
+	EventChannel        chan xes.Event
+	Subscriptions       map[string][]attestation.Subscription
+	Address             string
+	AttributeExtractors map[string]interface{}
 }
 
 // GetEvidence method to get ProcessVault's evidence
@@ -48,7 +49,7 @@ func (ed *EventDispatcher) GetEvidence(nonce string, reply *attestation.Evidence
 func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmission, reply *string) error {
 	//The reveiveing event should arrive as an encrypted message with the Provisioning generated for the last heartbeat
 	// Parse the event string
-	fmt.Println("Received event: ", eventSubmission.EncryptedEvent)
+	//fmt.Println("Received event: ", eventSubmission.EncryptedEvent)
 	//Find the key for the subscription that sent the event
 	var key string
 	for _, subscription := range ed.Subscriptions[eventSubmission.AgentReference] {
@@ -69,7 +70,8 @@ func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmis
 		fmt.Println("Error parsing event: ", err)
 		return err
 	}
-	//fmt.Println("Event received: ", event)
+	fmt.Println("Event received: ", event)
+	//TODO:here we should extract the attributes from the event according to the manifest
 	*reply = "Event processed successfully"
 	ed.EventChannel <- *event
 	return nil
@@ -95,7 +97,6 @@ func main() {
 	go eventDispatcher.StartRPCServer(addr)
 	eventDispatcher.SubscribeTo("localhost:6869")
 	psm.WaitForEvents()
-
 }
 
 // Check for subscription timeouts
@@ -153,7 +154,6 @@ func (ed *EventDispatcher) sendHeartbeat(interval int, subscription attestation.
 		if err != nil {
 			log.Fatalf("Error calling ReceiveHeartbeat: %v", err)
 		}
-		fmt.Println(reply)
 		if reply == "heartbeat received" {
 			//Add the evidence to the subscription
 			subscription.Heartbeats = append(subscription.Heartbeats, evidence)
