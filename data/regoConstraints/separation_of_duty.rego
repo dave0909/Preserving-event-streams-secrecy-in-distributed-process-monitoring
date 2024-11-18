@@ -1,24 +1,43 @@
 package separation_of_duty
 import rego.v1
 
-# Define a rule to check if the logistics operators for "Fill in container" and "Check container" activities are different for each trace
-check_operators_condition[trace_id] if {
-	trace_id := input.events[_].trace_concept_name
-	e1 := input.events[_]
-	e1.trace_concept_name == trace_id
-	e1.concept_name == "Fill in container (FC)"
-	e2 := input.events[_]
-	e2.trace_concept_name == trace_id
-	e2.concept_name == "Check container (CC)"
-	e1.logistics_operator != e2.logistics_operator
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+# Pending condition 1
+pending[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
 }
 
-# Define a rule to get all trace IDs that do not satisfy the operators condition
+# Violation condition 1
 violations[trace_id] if {
-	trace_id := input.events[_].trace_concept_name
-	not check_operators_condition[trace_id]
-	# Ensure that both activities are present
-	count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Fill in container (FC)"}) > 0
-	count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Check container (CC)"}) > 0
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
+    same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
 }
 
+# Violation condition 2
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Check container (CC)"
+    same_operator_exists(trace_id, "Check container (CC)", "Fill in container (FC)")
+}
+
+# Satisfied condition
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Order reception confirmed (ORC)"
+    not same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+}
+
+# Define a rule to check if the same logistics operator exists for both activities in the same trace
+same_operator_exists(trace_id, activity1, activity2) if {
+    e1 := input.events[_]
+    e1.trace_concept_name == trace_id
+    e1.concept_name == activity1
+    e2 := input.events[_]
+    e2.trace_concept_name == trace_id
+    e2.concept_name == activity2
+    e1.logistics_operator == e2.logistics_operator
+}

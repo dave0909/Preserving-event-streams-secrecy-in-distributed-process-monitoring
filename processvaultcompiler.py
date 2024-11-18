@@ -13,6 +13,9 @@ from pm4py.objects.petri_net.obj import PetriNet, Marking
 from pm4py.objects.petri_net.utils.petri_utils import add_arc_from_to
 from pm4py.util import exec_utils
 from pm4py.objects.conversion.bpmn.variants.to_petri_net import build_digraph_from_petri_net
+from pm4py.objects.petri_net.obj import PetriNet
+from pm4py.objects.petri_net.importer.variants import pnml as pnml_importer
+
 #TODO add silent transition names or unnamed acttivities' id to the set of names
 #TODO then try to replace MessageFLow with SequenceFlow
 class Parameters(Enum):
@@ -446,15 +449,35 @@ def main():
     except subprocess.CalledProcessError as e:
         print(e)
 
+#TODO: this is the right one
+# def generate_control_flow_logic(bpmn_file_path):
+#     petrinet, trans_names, silent_transition = parse_bpmn_to_petri(bpmn_file_path)
+#     places = sorted(petrinet.places, key=lambda place: place.name)
+#     transitions = sorted(petrinet.transitions, key=lambda transition: trans_names[transition.name])
+#     silent_transition = sorted(silent_transition)
+#     input_matrix, output_matrix = generate_input_output_matrices(places, transitions, petrinet.arcs)
+#     go_code = generate_go_code_from_petri_net(places, transitions, input_matrix, output_matrix, trans_names,
+#                                              silent_transition)
+#     return go_code
+def parse_pnml_to_petri(pnml_file_path):
+    net, initial_marking, final_marking = pnml_importer.apply(pnml_file_path)
+    trans_names = {t.name: t.label for t in net.transitions}
+    silent_transitions = {t.name for t in net.transitions if t.label is None}
+    return net, trans_names, silent_transitions
 
-def generate_control_flow_logic(bpmn_file_path):
-    petrinet, trans_names, silent_transition = parse_bpmn_to_petri(bpmn_file_path)
+def generate_control_flow_logic(file_path):
+    if file_path.endswith(".bpmn"):
+        petrinet, trans_names, silent_transition = parse_bpmn_to_petri(file_path)
+    elif file_path.endswith(".pnml"):
+        petrinet, trans_names, silent_transition = parse_pnml_to_petri(file_path)
+    else:
+        raise ValueError("Unsupported file type. Please use a .bpmn or .pnml file.")
+
     places = sorted(petrinet.places, key=lambda place: place.name)
     transitions = sorted(petrinet.transitions, key=lambda transition: trans_names[transition.name])
     silent_transition = sorted(silent_transition)
     input_matrix, output_matrix = generate_input_output_matrices(places, transitions, petrinet.arcs)
-    go_code = generate_go_code_from_petri_net(places, transitions, input_matrix, output_matrix, trans_names,
-                                              silent_transition)
+    go_code = generate_go_code_from_petri_net(places, transitions, input_matrix, output_matrix, trans_names, silent_transition)
     return go_code
 def generate_compliance_checking_logic(contraints_file_path):
     #For each file in the folder of the constraints_file_path
@@ -481,6 +504,7 @@ def generate_gocode_compliance(constaint_names, constraints):
 	"context"
 	"fmt"
 	"github.com/open-policy-agent/opa/rego"
+	"sync"
 	"log")
     """)
     go_code.append("// Generated process constraints code\n")
@@ -495,8 +519,23 @@ def generate_gocode_compliance(constaint_names, constraints):
     go_code.append("}\n")
     # Define the ComplianceCheckingLogic structure and InitComplianceCheckingLogic function
     go_code.append("""
-    type ComplianceCheckingLogic struct {
-	preparedConstraints []rego.PreparedEvalQuery
+// Enum for the state of the constraint
+type ConstraintState int
+
+const (
+	Init     ConstraintState = 0
+	Pending  ConstraintState = 1
+	Violated ConstraintState = 2
+)
+
+type Constraint struct {
+	name              string
+	preparedEvalQuery rego.PreparedEvalQuery
+	ConstraintState   map[string]ConstraintState // State for each case
+}
+
+type ComplianceCheckingLogic struct {
+	preparedConstraints []Constraint
 	ctx                 context.Context
 }
 
@@ -504,7 +543,7 @@ def generate_gocode_compliance(constaint_names, constraints):
 func InitComplianceCheckingLogic() (ComplianceCheckingLogic, []string) {
 	ctx := context.TODO()
 	ccLogic := ComplianceCheckingLogic{
-		preparedConstraints: []rego.PreparedEvalQuery{},
+		preparedConstraints: []Constraint{},
 		ctx:                 ctx,
 	}
 	for i, constraint := range constraints {
@@ -515,45 +554,109 @@ func InitComplianceCheckingLogic() (ComplianceCheckingLogic, []string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		ccLogic.preparedConstraints = append(ccLogic.preparedConstraints, query)
+		ccLogic.preparedConstraints = append(ccLogic.preparedConstraints, Constraint{
+			name:              constraintNames[i],
+			preparedEvalQuery: query,
+			ConstraintState:   make(map[string]ConstraintState),
+		})
 	}
 	return ccLogic, constraintNames
 }
 
-// Evalulate the event log with the prepared constraints
+// Evaluate the event log with the prepared constraints
 func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interface{}) map[string]interface{} {
-	violationMap := map[string]interface{}{}
-	for _, preparedConstraint := range ccl.preparedConstraints {
-		res, err := preparedConstraint.Eval(ccl.ctx, rego.EvalInput(eventLog))
-		//For each key value couple in results[0]
-		if err != nil {
-			// Handle evaluation error.
-			fmt.Println(err)
-		}
-		//For
-		for constraintName, _ := range preparedConstraint.Modules() {
-			resultValue := res[0].Expressions[0].Value
-			resultValueMap, ok := resultValue.(map[string]interface{})
-			if !ok {
-				fmt.Println(res)
-				log.Fatalf("Failed to convert result from policy inspection")
-			}
-			violations, ok := resultValueMap["violations"].(map[string]interface{})
-			if !ok {
-				fmt.Println(res)
-				log.Fatalf("Failed to convert violation from policy inspection")
-			}
-			violationMap[constraintName] = violations
+	//Get the last event from the event log
+	lastEvent := eventLog["events"].([]map[string]interface{})[len(eventLog["events"].([]map[string]interface{}))-1]
+	//Get the trace_id of the last event
+	traceId := lastEvent["trace_concept_name"].(string)
+	//If the trace_id is not in the constraint state, add it
+	for _, constraint := range ccl.preparedConstraints {
+		if _, ok := constraint.ConstraintState[traceId]; !ok {
+			constraint.ConstraintState[traceId] = Init
 		}
 	}
+	violationMap := map[string]interface{}{}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for _, constraint := range ccl.preparedConstraints {
+		wg.Add(1)
+		go func(constraint Constraint) {
+			defer wg.Done()
+			res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for constraintName := range constraint.preparedEvalQuery.Modules() {
+				resultValue := res[0].Expressions[0].Value
+				resultValueMap, ok := resultValue.(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert result from policy inspection")
+				}
+				violations, ok := resultValueMap["violations"].(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert violation from policy inspection")
+				}
+				pending, ok := resultValueMap["pending"].(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert pending from policy inspection")
+				}
+				satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert satisfied from policy inspection")
+				}
+				violationMap[constraintName] = map[string]interface{}{
+					"violations": violations,
+					"pending":    pending,
+					"satisfied":  satisfied,
+				}
+				//serve una un set di caseId processati
+				caseSet := map[string]bool{}
+				for caseId := range pending {
+					if constraint.ConstraintState[caseId] == Init {
+						constraint.ConstraintState[caseId] = Pending
+						fmt.Println("Constraint" + constraintName + " pending for case " + caseId)
+					}
+				}
+				for caseId := range violations {
+					if constraint.ConstraintState[caseId] == Pending {
+						if !caseSet[caseId] {
+							constraint.ConstraintState[caseId] = Violated
+							caseSet[caseId] = true
+							fmt.Println("Constraint" + constraintName + " violated for case " + caseId)
+						}
+					}
+				}
+				for caseId := range satisfied {
+					if constraint.ConstraintState[caseId] == Pending {
+						if !caseSet[caseId] {
+							constraint.ConstraintState[caseId] = Init
+							caseSet[caseId] = true
+							fmt.Println("Constraint" + constraintName + " satisfied for case " + caseId)
+						}
+					}
+				}
+			}
+		}(constraint)
+	}
+	wg.Wait()
 	return violationMap
 }
+
 """)
     return "\n".join(go_code)
 
 
 """
 python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true
+python3 processvaultcompiler.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_sepsis.json true true
+
 """
 
 def main():

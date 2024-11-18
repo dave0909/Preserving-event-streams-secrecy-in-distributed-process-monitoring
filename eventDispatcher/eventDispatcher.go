@@ -9,13 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"main/processStateManager"
 	attestation "main/utils/attestation"
 	"main/utils/eventsubmission"
 	"main/utils/xes"
 	"net"
 	"net/rpc"
-	"os"
 	"time"
 )
 
@@ -70,7 +68,6 @@ func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmis
 		fmt.Println("Error parsing event: ", err)
 		return err
 	}
-	fmt.Println("Event received: ", event)
 	//TODO:here we should extract the attributes from the event according to the manifest
 	*reply = "Event processed successfully"
 	ed.EventChannel <- *event
@@ -89,15 +86,15 @@ func (ed *EventDispatcher) StartRPCServer(addr string) {
 	ed.SubscribeTo("localhost:6068")
 }
 
-func main() {
-	addr := os.Args[1]
-	eventChannel := make(chan xes.Event)
-	psm := processStateManager.InitProcessStateManager(eventChannel)
-	eventDispatcher := &EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription)}
-	go eventDispatcher.StartRPCServer(addr)
-	eventDispatcher.SubscribeTo("localhost:6869")
-	psm.WaitForEvents()
-}
+//func main() {
+//	addr := os.Args[1]
+//	eventChannel := make(chan xes.Event)
+//	psm := processStateManager.InitProcessStateManager(eventChannel)
+//	eventDispatcher := &EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription)}
+//	go eventDispatcher.StartRPCServer(addr)
+//	eventDispatcher.SubscribeTo("localhost:6869")
+//	psm.WaitForEvents()
+//}
 
 // Check for subscription timeouts
 func (ed *EventDispatcher) checkTimeouts() {

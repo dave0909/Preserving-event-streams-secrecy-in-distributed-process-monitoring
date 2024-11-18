@@ -5,6 +5,7 @@ import (
 	"main/complianceCheckingLogic"
 	"main/utils/xes"
 	"main/workflowLogic"
+	"time"
 )
 
 // TODO: we assume that no activity is named "source" or "sink"
@@ -15,11 +16,14 @@ type ProcessState struct {
 	//Current state of the process
 	WfState WorkflowState
 	//List of all the events
-	Events []Event
+	EventLog []map[string]interface{}
 	//Compliance checking violations
 	//ComplianceCheckingViolations map[string]map[string]bool
 	//Compliance checking violations
 	ComplianceCheckingViolations map[string][]ComplianceCheckingViolation
+
+	//TODO: Remove this field
+	counter int
 }
 
 // Struct Event
@@ -60,16 +64,18 @@ type ProcessStateManager struct {
 	ComplianceCheckingLogic complianceCheckingLogic.ComplianceCheckingLogic
 	ProcessState            ProcessState
 	EventChannel            chan xes.Event
+	ExtractionManifest      map[string]interface{}
 }
 
 // Init a new ProcessStateManager
-func InitProcessStateManager(eventChannel chan xes.Event) ProcessStateManager {
+func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}) ProcessStateManager {
 	//ccLogic, cNames := complianceCheckingLogic.InitComplianceCheckingLogic()
 	ccLogic, _ := complianceCheckingLogic.InitComplianceCheckingLogic()
 	psm := ProcessStateManager{
 		WorkflowLogic:           workflowLogic.InitWorkflowLogic(),
 		ComplianceCheckingLogic: ccLogic,
 		EventChannel:            eventChannel,
+		ExtractionManifest:      extractionManifest,
 	}
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
@@ -115,20 +121,50 @@ func (psm *ProcessStateManager) initNewCase(caseId string) {
 
 // Handle event by EventDispatcher
 func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, timestamp string, data map[string]interface{}) {
-	event := Event{
-		Activity:  eventId,
-		CaseId:    caseId,
-		Timestamp: timestamp,
-		Data:      data,
-	}
+	//event := Event{
+	//	Activity:  eventId,
+	//	CaseId:    caseId,
+	//	Timestamp: timestamp,
+	//	Data:      data,
+	//}
 	//Check if the event exists in the workflow logic
+	firtsTs := time.Now()
+	fmt.Println("event number: ", len(psm.ProcessState.EventLog))
 	//TODO: this should be moved into the event dispatcher
 	if psm.WorkflowLogic.GetTransitionIndexByName(eventId) == -1 {
 		fmt.Println("Unknown event")
 		return
 	}
+	psm.ProcessState.counter += 1
 	//Add the event to the list of events
-	psm.ProcessState.Events = append(psm.ProcessState.Events, event)
+	//psm.ProcessState.Events = append(psm.ProcessState.Events, event)
+	eventLogEntry := map[string]interface{}{
+		"trace_concept_name": caseId,
+		"concept_name":       eventId,
+		"timestamp":          timestamp,
+	}
+	addEventFlag := false
+	//Check if the eventId variable is a key in the "attribute_extraction" field of the extraction manifest
+	if _, ok := psm.ExtractionManifest[eventId]; ok {
+		//If the eventId is a key in the "attribute_extraction" field, extract the attributes
+		attributeExtractors := psm.ExtractionManifest[eventId].([]interface{})
+
+		for _, attrName := range attributeExtractors {
+			//If attrName is a key in data
+			if _, ok := data[attrName.(string)]; ok {
+				eventLogEntry[attrName.(string)] = data[attrName.(string)]
+			}
+
+		}
+		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
+		addEventFlag = true
+	}
+
+	//for k, v := range data {
+	//	eventLogEntry[k] = v
+	//	//
+	//}
+	//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	//If the case is not in the cases map, add it
 	if !psm.ProcessState.Cases[caseId] {
 		psm.initNewCase(caseId)
@@ -156,7 +192,12 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 			//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
 		}
 	}
-	elaboratedLog := psm.prepareEventLog()
+	//Print time passed from firstTS
+	fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
+	//elaboratedLog := psm.prepareEventLog()
+	elaboratedLog := map[string]interface{}{}
+	//elaboratedLog["events"] = psm.ProcessState.EventLog
+	elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
 	violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	for constraint, result := range violationMap {
 		castedResult := result.(map[string]interface{})
@@ -199,29 +240,36 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 				})
 				fmt.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
 			}
-
 		}
-
 	}
-	psm.PrintProcessState()
-
-}
-func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {
-	elaboratedLog := map[string]interface{}{}
-	elaboratedLog["events"] = []interface{}{}
-	//For each event in the log
-	for _, event := range psm.ProcessState.Events {
-		singleEvent := map[string]interface{}{}
-		singleEvent["trace_concept_name"] = event.CaseId
-		singleEvent["concept_name"] = event.Activity
-		singleEvent["timestamp"] = event.Timestamp
-		for k, v := range event.Data {
-			singleEvent[k] = v
-		}
-		elaboratedLog["events"] = append(elaboratedLog["events"].([]interface{}), singleEvent)
+	if addEventFlag {
+		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	}
-	return elaboratedLog
+	fmt.Println("Time for compliance checking: ", time.Since(firtsTs).Seconds())
+	//Clear old events
+	if len(psm.ProcessState.EventLog) == 150 {
+		//clear the events log by removing the first 100 events
+		psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
+	}
+	fmt.Println("Event number: ", psm.ProcessState.counter)
 }
+
+//func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {
+//	elaboratedLog := map[string]interface{}{}
+//	elaboratedLog["events"] = []interface{}{}
+//	//For each event in the log
+//	for _, event := range psm.ProcessState.Events {
+//		singleEvent := map[string]interface{}{}
+//		singleEvent["trace_concept_name"] = event.CaseId
+//		singleEvent["concept_name"] = event.Activity
+//		singleEvent["timestamp"] = event.Timestamp
+//		for k, v := range event.Data {
+//			singleEvent[k] = v
+//		}
+//		elaboratedLog["events"] = append(elaboratedLog["events"].([]interface{}), singleEvent)
+//	}
+//	return elaboratedLog
+//}
 
 func (psm *ProcessStateManager) initWorkflowViolation(eventId string, caseId string, timestamp string, error error) {
 	//Reset expect next activities for the case

@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-// go run processStateAgent.go localhost:6869 localhost:8085
+// go run processStateAgent.go localhost:6869 localhost:1234
 func main() {
 	psaServer := os.Args[1]
 	esgAddress := os.Args[2]
@@ -93,7 +93,8 @@ func (psa *ProcessStateAgent) sendEvent(eventString string, client rpc.Client) {
 	eventSubmission := eventsubmission.EventSubmission{EncryptedEvent: eventString, AgentReference: psa.Address}
 	err := client.Call("EventDispatcher.SendEvent", eventSubmission, &reply)
 	if err != nil {
-		log.Fatalf("Error calling SendEvent: %v", err)
+		log.Println("Error calling SendEvent: %v", err)
+		return
 	}
 }
 

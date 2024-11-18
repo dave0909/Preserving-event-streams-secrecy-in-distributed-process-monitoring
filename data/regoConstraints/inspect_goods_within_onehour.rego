@@ -22,6 +22,6 @@ violations[trace_id] if {
 	trace_id := input.events[_].trace_concept_name
 	inspect_goods_present[trace_id]
 	not inspect_goods_within_one_hour[trace_id]
-	}
+}
 
 

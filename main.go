@@ -66,7 +66,7 @@ func main() {
 		attribute_extractors = nil
 	}
 	eventChannel := make(chan xes.Event)
-	psm := processStateManager.InitProcessStateManager(eventChannel)
+	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors)
 	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors}
 	go eventDispatcher.StartRPCServer(addr)
 	eventDispatcher.SubscribeTo("localhost:6869")

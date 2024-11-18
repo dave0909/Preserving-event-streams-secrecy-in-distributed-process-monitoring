@@ -1,0 +1,10 @@
+{
+  "activity_name": "concept:name",
+  "activity_timestamp": "time:timestamp",
+  "case_id": "concept:name",
+  "attribute_extraction": {
+    "ER Sepsis Triage": [],
+    "IV Antibiotics": [],
+    "LacticAcid": []
+  }
+}
