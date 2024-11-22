@@ -24,11 +24,12 @@ violations[trace_id] if {
     same_operator_exists(trace_id, "Check container (CC)", "Fill in container (FC)")
 }
 
-# Satisfied condition
+# Satisfied condition, when the trace is over and the constraint is in pending state
 satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
     most_recent_event.concept_name == "Order reception confirmed (ORC)"
-    not same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+    #This below is not needed
+    #not same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
 }
 
 # Define a rule to check if the same logistics operator exists for both activities in the same trace

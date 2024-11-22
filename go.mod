@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/antonmedv/expr v1.12.3
-	github.com/golang/protobuf v1.5.4
+	github.com/looplab/fsm v1.0.2
 	github.com/open-policy-agent/opa v0.69.0
 	github.com/veith/petrinet v0.3.0
 )

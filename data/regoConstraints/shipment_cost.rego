@@ -27,6 +27,7 @@ violations[trace_id] if {
 satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
 	most_recent_event.concept_name == "Order reception confirmed (ORC)"
+	#This below is not needed, if you are in pending state, the check cost condition is always true if you are in pending state
     check_cost_condition[trace_id]
 }
 

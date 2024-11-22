@@ -22,6 +22,7 @@ violations[trace_id] if {
     most_recent_event.concept_name == "IV Antibiotics"
     not iv_antibiotics_within_one_hour[trace_id]
 }
+#Add here violation conditions: when the last events are received
 
 # Satisfied condition
 satisfied[trace_id] if {
@@ -30,11 +31,22 @@ satisfied[trace_id] if {
     iv_antibiotics_within_one_hour[trace_id]
 }
 
+## Define a rule to check if "IV Antibiotics" happens within one hour after the latest "ER Sepsis Triage"
+#iv_antibiotics_within_one_hour[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    #This is not needed as if we are in pending state, the triage is always present
+#    triage_present[trace_id]
+#    sepsisTriage := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"])
+#    iv_antibiotics := most_recent_event
+#    time.parse_rfc3339_ns(iv_antibiotics.timestamp) <= sepsisTriage + 3600000000000
+#}
 # Define a rule to check if "IV Antibiotics" happens within one hour after the latest "ER Sepsis Triage"
 iv_antibiotics_within_one_hour[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
     triage_present[trace_id]
-    sepsisTriage := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"])
+    last_iv_antibiotics := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "IV Antibiotics"])
+    triage_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"; time.parse_rfc3339_ns(e.timestamp) < last_iv_antibiotics]
+    sepsisTriage := min(triage_events) # This will be 0 if triage_events is empty
     iv_antibiotics := most_recent_event
     time.parse_rfc3339_ns(iv_antibiotics.timestamp) <= sepsisTriage + 3600000000000
 }

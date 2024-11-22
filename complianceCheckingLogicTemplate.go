@@ -9,52 +9,57 @@ import (
 )
 
 var constraintNames = []string{
-	"separation_of_duty", "truck_policy",
+	"inspect_goods_within_onehour", "truck_policy",
 }
 
 var constraints = []string{
-	`package separation_of_duty
+	`package inspect_goods_within_onehour
 import rego.v1
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-# Pending condition 1
+# Define a rule to check if the most recent event is "IV Antibiotics"
+reached_present[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"}) > 0
+}
+
+# Pending condition
 pending[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Fill in container (FC)"
+    most_recent_event.concept_name == "Truck reached costumer (TRC)"
 }
 
-# Violation condition 1
+# Violation condition
 violations[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Fill in container (FC)"
-    same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    not inspect_goods_within_one_hour[trace_id]
 }
 
-# Violation condition 2
+# Violation condition, when the trace is over and the constraint is in pending state
 violations[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Check container (CC)"
-    same_operator_exists(trace_id, "Check container (CC)", "Fill in container (FC)")
-}
-
-# Satisfied condition
-satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
     most_recent_event.concept_name == "Order reception confirmed (ORC)"
-    not same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
 }
 
-# Define a rule to check if the same logistics operator exists for both activities in the same trace
-same_operator_exists(trace_id, activity1, activity2) if {
-    e1 := input.events[_]
-    e1.trace_concept_name == trace_id
-    e1.concept_name == activity1
-    e2 := input.events[_]
-    e2.trace_concept_name == trace_id
-    e2.concept_name == activity2
-    e1.logistics_operator == e2.logistics_operator
+# Satisfied condition, when I receive an inspect goods activity and the constraint is in pending state
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    inspect_goods_within_one_hour[trace_id]
+}
+
+# Define a rule to check if "Inspect goods (IG)" happens within one hour after the latest "Truck reached costumer (TRC)"
+inspect_goods_within_one_hour[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    reached_present[trace_id]
+    last_inspect := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Inspect goods (IG)"])
+    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)";time.parse_rfc3339_ns(e.timestamp) < last_inspect]
+    reached := min(reached_events) # This will be 0 if reached_events is empty
+    inspect := most_recent_event
+    time.parse_rfc3339_ns(inspect.timestamp) <= reached + 3600000000000
 }
 `, `package truck_policy
 import rego.v1
@@ -65,23 +70,25 @@ five_years_in_seconds := 5 * 365 * 24 * 60 * 60
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-# Pending condition (always true)
+# Pending condition
 pending[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    true
+    most_recent_event.concept_name == "Select truck (ST)"
 }
 
 # Violation condition
 violations[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Select truck (ST)"
+    #Not needed
+    #most_recent_event.concept_name == "Select truck (ST)"
     driver_experience_within_five_years[trace_id]
 }
 
 # Satisfied condition
 satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Select truck (ST)"
+    #Not needed
+    #most_recent_event.concept_name == "Select truck (ST)"
     not driver_experience_within_five_years[trace_id]
 }
 
@@ -227,58 +234,72 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interfa
 // main for testing
 func main() {
 	ccLogic, _ := InitComplianceCheckingLogic()
-	//test separation_of_duty
+
+	//Test the inspect_goods_within_onehour
 	eventLog := map[string]interface{}{
 		"events": []map[string]interface{}{
 			{
 				"trace_concept_name": "1",
-				"concept_name":       "Check container (CC)",
-				"logistics_operator": "B",
+				"concept_name":       "Truck reached costumer (TRC)",
+				"timestamp":          "2030-06-01T00:00:00Z",
 			},
-		},
-	}
-
+		}}
 	_ = ccLogic.EvaluateEventLog(eventLog)
-	////print the state of the fill in container constraint
+	//print the state of the fill in container constraint
 	fmt.Println(printConstraintState(ccLogic.preparedConstraints[0].ConstraintState["1"]))
+	//Test different consecutive evaluations by adding events to the eventLog. I want to obtain a pending state and a successful state
 	eventLog = map[string]interface{}{
 		"events": []map[string]interface{}{
 			{
 				"trace_concept_name": "1",
-				"concept_name":       "Check container (CC)",
-				"logistics_operator": "B",
+				"concept_name":       "Truck reached costumer (TRC)",
+				"timestamp":          "2030-06-01T00:00:00Z",
 			},
 			{
 				"trace_concept_name": "1",
-				"concept_name":       "Fill in container (FC)",
-				"logistics_operator": "A",
+				"concept_name":       "Truck reached costumer (TRC)",
+				"timestamp":          "2030-06-01T02:00:00Z",
 			},
-			//Event that violates the constraint
+		}}
+	_ = ccLogic.EvaluateEventLog(eventLog)
+	//print the state of the fill in container constraint
+	fmt.Println(printConstraintState(ccLogic.preparedConstraints[0].ConstraintState["1"]))
+	//Test different consecutive evaluations by adding events to the eventLog. I want to obtain a pending state and a successful state
+	eventLog = map[string]interface{}{
+		"events": []map[string]interface{}{
 			{
 				"trace_concept_name": "1",
-				"concept_name":       "Fill in container (FC)",
-				"logistics_operator": "B",
+				"concept_name":       "Truck reached costumer (TRC)",
+				"timestamp":          "2030-06-01T00:00:00Z",
 			},
-		},
-	}
-
+			{
+				"trace_concept_name": "1",
+				"concept_name":       "Truck reached costumer (TRC)",
+				"timestamp":          "2030-06-01T00:10:00Z",
+			},
+			{
+				"trace_concept_name": "1",
+				"concept_name":       "Inspect goods (IG)",
+				"timestamp":          "2030-06-01T00:59:00Z",
+			},
+		}}
 	_ = ccLogic.EvaluateEventLog(eventLog)
 	//print the state of the fill in container constraint
 	fmt.Println(printConstraintState(ccLogic.preparedConstraints[0].ConstraintState["1"]))
 
 	//// Test truck_policy
-	//eventLog = map[string]interface{}{
-	//	"events": []map[string]interface{}{
-	//		{
-	//			"trace_concept_name":  "1",
-	//			"concept_name":        "Select truck (ST)",
-	//			"timestamp":           "2030-06-01T00:00:00Z",
-	//			"license_first_issue": "2016-06-01T00:00:00Z",
-	//		},
-	//	}}
-	//_ = ccLogic.EvaluateEventLog(eventLog)
-	////print the state of the select truck constraint
-	//fmt.Println(printConstraintState(ccLogic.preparedConstraints[1].ConstraintState["1"]))
+	eventLog = map[string]interface{}{
+		"events": []map[string]interface{}{
+			{
+				"trace_concept_name":  "1",
+				"concept_name":        "Select truck (ST)",
+				"timestamp":           "2030-06-01T00:00:00Z",
+				"license_first_issue": "2016-06-01T00:00:00Z",
+			},
+		}}
+	_ = ccLogic.EvaluateEventLog(eventLog)
+	//print the state of the select truck constraint
+	fmt.Println(printConstraintState(ccLogic.preparedConstraints[1].ConstraintState["1"]))
 }
 
 // print constriaint state as a string

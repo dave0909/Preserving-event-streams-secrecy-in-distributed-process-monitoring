@@ -1,27 +1,48 @@
 package inspect_goods_within_onehour
-
-#CONSTRAINT: Inspect goods must happen within one hour from the "Truck reached costumer activity"
 import rego.v1
 
-# Define a rule to check if "Inspect goods" happens within one hour after "Truck reached customer" for each trace
-inspect_goods_within_one_hour[trace_id] if {
-	trace_id := input.events[_].trace_concept_name
-	truck_reached := input.events[_];truck_reached.trace_concept_name == trace_id;truck_reached.concept_name == "Truck reached costumer (TRC)"
-	inspect_goods := input.events[_];inspect_goods.trace_concept_name == trace_id;inspect_goods.concept_name == "Inspect goods (IG)"
-	time.parse_rfc3339_ns(inspect_goods.inspection_time) <= time.parse_rfc3339_ns(truck_reached.receipt_time) + 3600000000000
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+# Define a rule to check if the most recent event is "IV Antibiotics"
+reached_present[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"}) > 0
 }
 
-# Define a rule to check if "Inspect goods" activity is present in the trace
-inspect_goods_present[trace_id] if {
-	trace_id := input.events[_].trace_concept_name
-	count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Inspect goods (IG)"}) > 0
+# Pending condition
+pending[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Truck reached costumer (TRC)"
 }
 
-# Define a rule to get all trace IDs that do not satisfy the condition
+# Violation condition
 violations[trace_id] if {
-	trace_id := input.events[_].trace_concept_name
-	inspect_goods_present[trace_id]
-	not inspect_goods_within_one_hour[trace_id]
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    not inspect_goods_within_one_hour[trace_id]
 }
 
+# Violation condition, when the trace is over and the constraint is in pending state
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Order reception confirmed (ORC)"
+}
 
+# Satisfied condition, when I receive an inspect goods activity and the constraint is in pending state
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    inspect_goods_within_one_hour[trace_id]
+}
+
+# Define a rule to check if "Inspect goods (IG)" happens within one hour after the latest "Truck reached costumer (TRC)"
+inspect_goods_within_one_hour[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    reached_present[trace_id]
+    last_inspect := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Inspect goods (IG)"])
+    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)";time.parse_rfc3339_ns(e.timestamp) < last_inspect]
+    reached := min(reached_events) # This will be 0 if reached_events is empty
+    inspect := most_recent_event
+    time.parse_rfc3339_ns(inspect.timestamp) <= reached + 3600000000000
+}

@@ -22,6 +22,8 @@ violations[trace_id] if {
     most_recent_event.concept_name == "LacticAcid"
     not lactic_acid_within_one_hour[trace_id]
 }
+#Add here violation conditions: when the last events are received
+
 
 # Satisfied condition
 satisfied[trace_id] if {
@@ -30,11 +32,25 @@ satisfied[trace_id] if {
     lactic_acid_within_one_hour[trace_id]
 }
 
-# Define a rule to check if "LacticAcid" happens within one hour after the latest "ER Sepsis Triage"
+## Define a rule to check if "LacticAcid" happens within one hour after the latest "ER Sepsis Triage"
+#lactic_acid_within_one_hour[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    #This is not needed as if we are in pending state, the triage is always present
+#    triage_present[trace_id]
+#    sepsisTriage := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"])
+#    lactic_acid := most_recent_event
+#    time.parse_rfc3339_ns(lactic_acid.timestamp) <= sepsisTriage + 10800000000000
+#}
+## Define a rule to check if "LacticAcid" happens within one hour after the latest "ER Sepsis Triage"
+
 lactic_acid_within_one_hour[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
     triage_present[trace_id]
-    sepsisTriage := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"])
+    # Get the last lactic acid event
+    last_lactic_acid := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "LacticAcid"])
+    #Get the triage events before the last lactic acid event
+    triage_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"; time.parse_rfc3339_ns(e.timestamp) < last_lactic_acid]
+    sepsisTriage := min(triage_events) # This will be 0 if triage_events is empty
     lactic_acid := most_recent_event
-    time.parse_rfc3339_ns(lactic_acid.timestamp) <= sepsisTriage + 10800000000000
+    time.parse_rfc3339_ns(lactic_acid.timestamp) <= sepsisTriage + 3600000000000
 }

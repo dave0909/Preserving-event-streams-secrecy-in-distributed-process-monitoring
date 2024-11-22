@@ -1,0 +1,15 @@
+initial_state: Init
+states:
+  - Init
+  - Pending
+  - Violated
+transitions:
+  - from: Init
+    to: Pending
+    event: Pending
+  - from: Pending
+    to: Violated
+    event: Violated
+  - from: Pending
+    to: Init
+    event: Satisfied
