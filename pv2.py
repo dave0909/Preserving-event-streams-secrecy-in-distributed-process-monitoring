@@ -417,13 +417,19 @@ def generate_input_output_matrices(places, transitions, arcs):
 
 
 def main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 10:
         print("Usage: python processvaultcompiler.py <bpmn_file_path> <output_go_file_path>")
         sys.exit(1)
 
     bpmn_file_path = sys.argv[1]
     output_go_file_path = sys.argv[2]
     constraint_folder_path=sys.argv[3]
+    output_go_file_path_compliance = sys.argv[4]
+    event_dispatcher_address= sys.argv[5]
+    extraction_manifest_file_path = sys.argv[6]
+    isInSimulation = sys.argv[7]
+    isInTesting = sys.argv[8]
+    nEvents = sys.argv[9]
 
     control_flow_logic = generate_control_flow_logic(bpmn_file_path)
     compliance_checking_logic = generate_compliance_checking_logic(constraint_folder_path)
@@ -437,11 +443,15 @@ def main():
     os.chmod(output_go_file_path, 0o666)
 
 
+    if isInSimulation=="true":
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents
+    else:
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents
     # Execute the build and run commands
     try:
         print("Building and running the Process Vault...")
         subprocess.run(
-            "ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main",
+            command,
             shell=True,
             check=True
         )
