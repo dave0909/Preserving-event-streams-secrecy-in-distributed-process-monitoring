@@ -1,64 +1,46 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"main/eventDispatcher"
 	"main/processStateManager"
 	"main/utils/attestation"
-	"main/utils/test"
 	"main/utils/xes"
+	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"strconv"
+	"time"
 )
 
 func main() {
-	////TODO. this is the logic of the process state agent
-	//psm := processStateManager.InitProcessStateManager()
-	//for {
-	//	conn, err := net.Dial("tcp", "localhost:8085")
-	//	if err != nil {
-	//		fmt.Println("Error connecting:", err)
-	//		//os.Exit(1)
-	//	} else {
-	//		defer conn.Close()
-	//		fmt.Println("Connected to localhost:8085")
-	//		readEventStream(psm, conn)
-	//		break
-	//	}
-	//}
-	////----TODO UPPER WORK FOR EVENT STREAMS
-	//
-	//////Read event from keyboard input
-	////psm := processStateManager.InitProcessStateManager()
-	////for {
-	////	fmt.Print("Enter the text of the event in XES format:")
-	////	reader := bufio.NewReader(os.Stdin)
-	////	event, _ := reader.ReadString('\n')
-	////	parsed_event, err := xes.ParseXes(event)
-	////	if err != nil {
-	////		log.Fatalf("Failed to parse XES event: %v", err)
-	////	}
-	////	psm.HandleEvent(parsed_event.ActivityID, parsed_event.CaseID, parsed_event.Timestamp, parsed_event.Attributes)
-	////	//fmt.Println("Final Process State:", psm.ProcessState)
-	////}
 	addr := os.Args[1]
 	manifestFileName := os.Args[2]
 	simulationMode := os.Args[3]
 	testMode := os.Args[4]
-	if testMode == "true" {
-		test.TEST_MODE = true
-		_, cancel := context.WithCancel(context.Background())
-		go test.PrintRamUsage(cancel)
-	}
+	nEvents := os.Args[5]
+	//if testMode == "true" {
+	//	test.TEST_MODE = true
+	//	_, cancel := context.WithCancel(context.Background())
+	//	go test.PrintRamUsage(cancel)
+	//}
 	//Parse the boolean value of the simulation mode
+	n, err := strconv.Atoi(nEvents)
+	if err != nil && nEvents != "" {
+		// ... handle error
+		panic(err)
+	}
 	simulationModeBool, err := strconv.ParseBool(simulationMode)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Simulation mode:", simulationModeBool)
+	testModeBool, err := strconv.ParseBool(testMode)
+	if err != nil {
+		panic(err)
+	}
 	attribute_extractors := make(map[string]interface{})
 	if manifestFileName != "" {
 		attribute_extractors = parseExtractionManifest(manifestFileName)
@@ -67,9 +49,14 @@ func main() {
 	}
 	eventChannel := make(chan xes.Event)
 	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors)
-	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors}
+	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool}
 	go eventDispatcher.StartRPCServer(addr)
-	eventDispatcher.SubscribeTo("localhost:6869")
+	time.Sleep(2 * time.Second)
+	eventDispatcher.SubscribeTo("localhost:6065")
+	// Start recording memory usage
+	if testModeBool {
+		go recordMemoryUsage(10*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
+	}
 	psm.WaitForEvents()
 }
 
@@ -139,4 +126,49 @@ TEST truck policy with no violation
 <org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Drugs order received (DOR)"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
 **/
 
-//<org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Activity G"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
+// <org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Activity G"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
+// Function to record memory usage
+func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm *processStateManager.ProcessStateManager) {
+	// Open the file in append mode (create if it doesn't exist)
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	// Write the header only if the file is empty
+	fileInfo, err := file.Stat()
+	if err != nil {
+		log.Fatalf("Failed to get file info: %v", err)
+	}
+	if fileInfo.Size() == 0 {
+		_, _ = file.WriteString("Timestamp,Memory Usage\n")
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		fmt.Println(psm.ProcessState.Counter)
+		if psm.ProcessState.Counter == nEvents {
+			break
+		}
+		select {
+		case <-ticker.C:
+			// Capture memory statistics
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+
+			// Format memory stats
+			currentTime := time.Now().Unix()
+			alloc := m.Alloc
+			// Write to file
+			data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
+			_, _ = file.WriteString(data)
+
+			// Also print to the console
+			fmt.Printf("%s - Memory Usage: %d MiB", currentTime, alloc)
+		}
+	}
+	fmt.Println("End of the test after ", nEvents, "events")
+}

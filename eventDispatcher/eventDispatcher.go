@@ -5,14 +5,16 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/edgelesssys/ego/enclave"
+	"net"
+
+	//"github.com/edgelesssys/ego/enclave"
 	"log"
 	attestation "main/utils/attestation"
 	"main/utils/eventsubmission"
 	"main/utils/xes"
-	"net"
 	"net/rpc"
 	"time"
 )
@@ -24,21 +26,28 @@ type EventDispatcher struct {
 	Subscriptions       map[string][]attestation.Subscription
 	Address             string
 	AttributeExtractors map[string]interface{}
+	IsInSimulation      bool
 }
 
 // GetEvidence method to get ProcessVault's evidence
 func (ed *EventDispatcher) GetEvidence(nonce string, reply *attestation.Evidence) error {
-	//report, err := enclave.GetRemoteReport([]byte(nonce))
-	//if err != nil {
-	//	return err
-	//}
-	//*reply = string(report)
-	//return nil
 	provisioningKey, err := ed.generateProvisioningKey()
 	if err != nil {
 		return err
 	}
-	newEvidence := attestation.Evidence{Report: []byte(nonce), Timestamp: time.Now().Unix(), ProvisioningKey: provisioningKey}
+	var report []byte
+	if !ed.IsInSimulation {
+		report, err = enclave.GetRemoteReport(provisioningKey)
+		if err != nil {
+			return err
+		}
+	}
+	encodedReport := base64.StdEncoding.EncodeToString(report[:])
+	if err != nil {
+		return err
+	}
+	//TODO: REMOVE THE PROVISIONING KEY FROM THE TRANSMITTED REPORT
+	newEvidence := attestation.Evidence{Report: encodedReport, Timestamp: time.Now().Unix(), ProvisioningKey: provisioningKey}
 	*reply = newEvidence
 	return nil
 }
@@ -49,14 +58,14 @@ func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmis
 	// Parse the event string
 	//fmt.Println("Received event: ", eventSubmission.EncryptedEvent)
 	//Find the key for the subscription that sent the event
-	var key string
+	var key []byte
 	for _, subscription := range ed.Subscriptions[eventSubmission.AgentReference] {
 		if len(subscription.Heartbeats) > 0 {
 			key = subscription.Heartbeats[len(subscription.Heartbeats)-1].ProvisioningKey
 			break
 		}
 	}
-	if key == "" {
+	if key == nil {
 		return fmt.Errorf("No key found for the subscription")
 	}
 	decryptedEvent, err := ed.decryptEvent(eventSubmission.EncryptedEvent, key)
@@ -83,7 +92,6 @@ func (ed *EventDispatcher) StartRPCServer(addr string) {
 	}
 	log.Println("Serving RPC server on port ", addr)
 	rpc.Accept(listener)
-	ed.SubscribeTo("localhost:6068")
 }
 
 //func main() {
@@ -142,9 +150,24 @@ func (ed *EventDispatcher) sendHeartbeat(interval int, subscription attestation.
 		//Generate a symetric key for the evidence
 		provisioningKey, err := ed.generateProvisioningKey()
 		if err != nil {
-			log.Fatalf("Error generating provisioning key: %v", err)
+			fmt.Println(err.Error())
+			return
 		}
-		evidence := attestation.Evidence{Report: []byte("heartbeat"), Timestamp: time.Now().Unix(), SubscriptionId: subscription.Id, ProvisioningKey: provisioningKey}
+		//Maybe we need the byte version of the key, not formatted in this way
+		var report []byte
+		if !ed.IsInSimulation {
+			report, err = enclave.GetRemoteReport(provisioningKey)
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+		}
+		encodedReport := base64.StdEncoding.EncodeToString(report[:])
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		//TODO: REMOVE THE PROVISIONING KEY FROM THE TRANSMITTED REPORT
+		evidence := attestation.Evidence{Report: encodedReport, Timestamp: time.Now().Unix(), SubscriptionId: subscription.Id, ProvisioningKey: provisioningKey}
 		client := subscription.ClientConnection
 		var reply string
 		err = client.Call("ProcessStateAgent.ReceiveHeartbeat", evidence, &reply)
@@ -153,6 +176,7 @@ func (ed *EventDispatcher) sendHeartbeat(interval int, subscription attestation.
 		}
 		if reply == "heartbeat received" {
 			//Add the evidence to the subscription
+			subscription.Heartbeats = subscription.Heartbeats[:0]
 			subscription.Heartbeats = append(subscription.Heartbeats, evidence)
 			//Update the subscription in the slice
 			for i, sub := range ed.Subscriptions[subscription.AgentAddress] {
@@ -167,21 +191,17 @@ func (ed *EventDispatcher) sendHeartbeat(interval int, subscription attestation.
 }
 
 // Function to generate a random symmetric AES key
-func (ed *EventDispatcher) generateProvisioningKey() (string, error) {
+func (ed *EventDispatcher) generateProvisioningKey() ([]byte, error) {
 	key := make([]byte, 32) // AES-256
 	_, err := rand.Read(key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return hex.EncodeToString(key), nil
+	return key, nil
 }
 
-func (ed *EventDispatcher) decryptEvent(eventString, key string) (string, error) {
-	decodedKey, err := hex.DecodeString(key)
-	if err != nil {
-		return "", err
-	}
-	block, err := aes.NewCipher(decodedKey)
+func (ed *EventDispatcher) decryptEvent(eventString string, key []byte) (string, error) {
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
 	}
@@ -204,5 +224,3 @@ func (ed *EventDispatcher) decryptEvent(eventString, key string) (string, error)
 	}
 	return string(plaintext), nil
 }
-
-//Function that given a the address of the agent retrieve the provisioning key from the last heartbeat

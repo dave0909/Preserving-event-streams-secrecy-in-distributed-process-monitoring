@@ -80,6 +80,8 @@ BUFFER_SIZE = 1024
 
 log_path = '../data/xes/motivating.xes'  # Replace with the path to your XES file
 log = xes_importer.apply(log_path)
+print(log[0])
+
 
 def create_event_xml_string(trace, event):
     trace_name = trace.attributes["concept:name"] if "concept:name" in trace.attributes else "case_unknown"
@@ -113,13 +115,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         print(f"Connection from {client_address} established.")
         try:
             for trace in log:
+                print(trace.attributes["concept:name"])
                 for event in trace:
                     event_string = create_event_xml_string(trace, event)
                     client_socket.sendall(event_string.encode())
                     print(f"Sent event: {event_string}")
-                    time.sleep(0.01)
+                    time.sleep(0.05)
         except Exception as e:
             print(f"An error occurred: {e}")
+            client_socket.close()
         finally:
             client_socket.close()
             print(f"Connection from {client_address} closed.")

@@ -6,9 +6,9 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/edgelesssys/ego/eclient"
 	"io"
 	"log"
 	"main/utils/attestation"
@@ -20,11 +20,18 @@ import (
 	"time"
 )
 
-// go run processStateAgent.go localhost:6869 localhost:1234
+// go run processStateAgent.go localhost:6065 localhost:1234 false
+// CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go run processStateAgent.go localhost:6065 localhost:1234 false
 func main() {
 	psaServer := os.Args[1]
 	esgAddress := os.Args[2]
-	psa := initProcessStateAgent(psaServer, esgAddress)
+	skippAttestation := os.Args[3]
+	skippAttestationBool := skippAttestation == "true"
+	if skippAttestationBool {
+		fmt.Println("Running process state agent without remote attestation")
+	}
+
+	psa := initProcessStateAgent(psaServer, esgAddress, skippAttestationBool)
 	//TODO: UNCOMMENT HERE TO CONNECT EVENT STREAM GENERATOR
 	//psa.connectToEventSteamGenerator()
 	go psa.StartRPCServer(psaServer)
@@ -62,11 +69,12 @@ type ProcessStateAgent struct {
 	// Mutex
 	mu sync.Mutex
 	//Subcounter
-	SubCounter int
+	SubCounter      int
+	skipAttestation bool
 }
 
-func initProcessStateAgent(address string, eventStreamGenerator string) ProcessStateAgent {
-	return ProcessStateAgent{EventStreamGenerator: eventStreamGenerator, Address: address, PublicKey: []byte("publicKey"), mu: sync.Mutex{}}
+func initProcessStateAgent(address string, eventStreamGenerator string, skipAttestation bool) ProcessStateAgent {
+	return ProcessStateAgent{EventStreamGenerator: eventStreamGenerator, Address: address, PublicKey: []byte("publicKey"), mu: sync.Mutex{}, skipAttestation: skipAttestation}
 }
 
 func (psa *ProcessStateAgent) readEventStream(conn net.Conn) {
@@ -120,9 +128,7 @@ func (psa *ProcessStateAgent) StartRPCServer(addr string) {
 	rpc.Accept(listener)
 }
 
-// TODO start implementing from here. You must integrate subscription generation and heartbeat meachanism
 func (psa *ProcessStateAgent) Subscribe(receiverAddress string, reply *string) error {
-	fmt.Println(receiverAddress)
 	client, err := rpc.Dial("tcp", receiverAddress)
 	if err != nil {
 		log.Fatalf("Error connecting to RPC server: %v", err)
@@ -130,10 +136,8 @@ func (psa *ProcessStateAgent) Subscribe(receiverAddress string, reply *string) e
 	var evidence attestation.Evidence
 	nonce := "*ThisIsAnonce*"
 	err = client.Call("EventDispatcher.GetEvidence", nonce, &evidence)
-	if err != nil {
-		log.Fatalf("Error calling Get Evidence from event dispatcher: %v", err)
-	}
-	if psa.verifyEvidence(string(evidence.Report)) {
+	isVerified, provisioningKey := psa.verifyEvidence(evidence, psa.skipAttestation)
+	if isVerified {
 		evidenceTime := evidence.Timestamp
 		timeInt := 5
 		newSubscription := attestation.Subscription{
@@ -146,12 +150,16 @@ func (psa *ProcessStateAgent) Subscribe(receiverAddress string, reply *string) e
 			ClientConnection: client,
 			Id:               psa.SubCounter + 1,
 		}
+		if provisioningKey != nil {
+			evidence.ProvisioningKey = provisioningKey
+		}
 		newSubscription.Heartbeats = append(newSubscription.Heartbeats, attestation.Evidence{
-			Report: []byte(evidence.Report),
+			Report: evidence.Report,
 			//TODO: change here after the attestation mechanism is implemented
-			Timestamp:       evidenceTime,
-			SubscriptionId:  newSubscription.Id,
-			ProvisioningKey: evidence.ProvisioningKey,
+			Timestamp:      evidenceTime,
+			SubscriptionId: newSubscription.Id,
+			//ProvisioningKey: evidence.ProvisioningKey,
+			ProvisioningKey: evidence.ProvisioningKey[:32],
 		})
 		// Generate a JSON string from the subscription
 		psa.SubCounter++
@@ -193,7 +201,11 @@ func (psa *ProcessStateAgent) checkTimeouts() {
 
 // ReceiveHeartbeat processes incoming heartbeat evidence and updates the corresponding subscription.
 func (psa *ProcessStateAgent) ReceiveHeartbeat(evidence *attestation.Evidence, reply *string) error {
-	if psa.verifyEvidence(string(evidence.Report)) {
+	isVerified, provisioningKey := psa.verifyEvidence(*evidence, psa.skipAttestation)
+	if isVerified {
+		if provisioningKey != nil {
+			evidence.ProvisioningKey = provisioningKey[:32]
+		}
 		// Find the subscription with the given id in the list of subscriptions
 		for i, sub := range psa.Subscriptions {
 			if sub.Id == evidence.SubscriptionId {
@@ -208,21 +220,34 @@ func (psa *ProcessStateAgent) ReceiveHeartbeat(evidence *attestation.Evidence, r
 	} else {
 		*reply = "Heartbeat verification failed not verified"
 	}
-	fmt.Println(psa.Subscriptions)
+	//fmt.Println(psa.Subscriptions)
 	return nil
 }
 
 // TODO: change here after the attestation mechanism is implemented
-func (psa *ProcessStateAgent) verifyEvidence(evidence string) bool {
-	return true
+func (psa *ProcessStateAgent) verifyEvidence(evidence attestation.Evidence, skippAttestation bool) (bool, []byte) {
+	if skippAttestation {
+		return true, nil
+	}
+	encryptedReport, err := base64.StdEncoding.DecodeString(evidence.Report)
+	if err != nil {
+		fmt.Println(err)
+		return false, nil
+	}
+	if err != nil {
+		log.Fatalf("Error calling Get Evidence from event dispatcher: %v", err)
+	}
+	decryptedReport, err := eclient.VerifyRemoteReport(encryptedReport)
+	if err != nil {
+		fmt.Println("Attestation failed. Cannot decrypt the report.")
+		fmt.Println(err)
+		return false, nil
+	}
+	return true, decryptedReport.Data
 }
 
-func (psa *ProcessStateAgent) encryptEvent(eventString, key string) (string, error) {
-	decodedKey, err := hex.DecodeString(key)
-	if err != nil {
-		return "", err
-	}
-	block, err := aes.NewCipher(decodedKey)
+func (psa *ProcessStateAgent) encryptEvent(eventString string, key []byte) (string, error) {
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
 	}

@@ -1,279 +1,325 @@
 package complianceCheckingLogic
 
-import (
+
+    import (
 	"context"
 	"fmt"
-	"github.com/looplab/fsm"
 	"github.com/open-policy-agent/opa/rego"
-	"log"
 	"sync"
-)
-
+	"log")
+    
 // Generated process constraints code
 
 var constraintNames = []string{
-"iv_antibiotics_within_onehour", "lactic_acid_within_onehour"}
+"inspect_goods_within_onehour", "separation_of_duty", "shipment_cost", "truck_policy",
+}
 
 var constraints = []string{
 
-`package iv_antibiotics_within_onehour
+`package inspect_goods_within_onehour
 import rego.v1
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
 # Define a rule to check if the most recent event is "IV Antibiotics"
-triage_present[trace_id] if {
+reached_present[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"}) > 0
+    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"}) > 0
 }
 
 # Pending condition
 pending[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "ER Sepsis Triage"
+    most_recent_event.concept_name == "Truck reached costumer (TRC)"
 }
 
 # Violation condition
 violations[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "IV Antibiotics"
-    not iv_antibiotics_within_one_hour[trace_id]
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    not inspect_goods_within_one_hour[trace_id]
 }
-#Add here violation conditions: when the last events are received
 
-# Satisfied condition
+# Violation condition, when the trace is over and the constraint is in pending state
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Order reception confirmed (ORC)"
+}
+
+# Satisfied condition, when I receive an inspect goods activity and the constraint is in pending state
 satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "IV Antibiotics"
-    iv_antibiotics_within_one_hour[trace_id]
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    inspect_goods_within_one_hour[trace_id]
 }
 
-## Define a rule to check if "IV Antibiotics" happens within one hour after the latest "ER Sepsis Triage"
-#iv_antibiotics_within_one_hour[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    #This is not needed as if we are in pending state, the triage is always present
-#    triage_present[trace_id]
-#    sepsisTriage := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"])
-#    iv_antibiotics := most_recent_event
-#    time.parse_rfc3339_ns(iv_antibiotics.timestamp) <= sepsisTriage + 3600000000000
-#}
-# Define a rule to check if "IV Antibiotics" happens within one hour after the latest "ER Sepsis Triage"
-iv_antibiotics_within_one_hour[trace_id] if {
+# Define a rule to check if "Inspect goods (IG)" happens within one hour after the latest "Truck reached costumer (TRC)"
+inspect_goods_within_one_hour[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    triage_present[trace_id]
-    last_iv_antibiotics := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "IV Antibiotics"])
-    triage_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"; time.parse_rfc3339_ns(e.timestamp) < last_iv_antibiotics]
-    sepsisTriage := min(triage_events) # This will be 0 if triage_events is empty
-    iv_antibiotics := most_recent_event
-    time.parse_rfc3339_ns(iv_antibiotics.timestamp) <= sepsisTriage + 3600000000000
+    reached_present[trace_id]
+    last_inspect := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Inspect goods (IG)"])
+    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)";time.parse_rfc3339_ns(e.timestamp) < last_inspect]
+    reached := min(reached_events) # This will be 0 if reached_events is empty
+    inspect := most_recent_event
+    time.parse_rfc3339_ns(inspect.timestamp) <= reached + 3600000000000
 }`,
 
-`package lactic_acid_within_onehour
+`package separation_of_duty
 import rego.v1
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-# Define a rule to check if the most recent event is "LacticAcid"
-triage_present[trace_id] if {
+# Pending condition 1
+pending[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"}) > 0
+    most_recent_event.concept_name == "Fill in container (FC)"
 }
+
+# Violation condition 1
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
+    same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+}
+
+# Violation condition 2
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Check container (CC)"
+    same_operator_exists(trace_id, "Check container (CC)", "Fill in container (FC)")
+}
+
+# Satisfied condition, when the trace is over and the constraint is in pending state
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Order reception confirmed (ORC)"
+    #This below is not needed
+    #not same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+}
+
+# Define a rule to check if the same logistics operator exists for both activities in the same trace
+same_operator_exists(trace_id, activity1, activity2) if {
+    e1 := input.events[_]
+    e1.trace_concept_name == trace_id
+    e1.concept_name == activity1
+    e2 := input.events[_]
+    e2.trace_concept_name == trace_id
+    e2.concept_name == activity2
+    e1.logistics_operator == e2.logistics_operator
+}`,
+
+`package shipment_cost
+import rego.v1
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
 
 # Pending condition
 pending[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "ER Sepsis Triage"
+    most_recent_event.concept_name == "Reserve shipment (RS)"
 }
 
 # Violation condition
 violations[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "LacticAcid"
-    not lactic_acid_within_one_hour[trace_id]
+    most_recent_event.concept_name == "Drive to manufacturer (DM)"
+    not check_cost_condition[trace_id]
 }
-#Add here violation conditions: when the last events are received
-
+# Violation condition
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Drive to costumer (DC)"
+    not check_cost_condition[trace_id]
+}
 
 # Satisfied condition
 satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "LacticAcid"
-    lactic_acid_within_one_hour[trace_id]
+	most_recent_event.concept_name == "Order reception confirmed (ORC)"
+	#This below is not needed, if you are in pending state, the check cost condition is always true if you are in pending state
+    check_cost_condition[trace_id]
 }
 
-## Define a rule to check if "LacticAcid" happens within one hour after the latest "ER Sepsis Triage"
-#lactic_acid_within_one_hour[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    #This is not needed as if we are in pending state, the triage is always present
-#    triage_present[trace_id]
-#    sepsisTriage := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"])
-#    lactic_acid := most_recent_event
-#    time.parse_rfc3339_ns(lactic_acid.timestamp) <= sepsisTriage + 10800000000000
-#}
-## Define a rule to check if "LacticAcid" happens within one hour after the latest "ER Sepsis Triage"
-
-lactic_acid_within_one_hour[trace_id] if {
+# Define a rule to check the cost condition
+check_cost_condition[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    triage_present[trace_id]
-    # Get the last lactic acid event
-    last_lactic_acid := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "LacticAcid"])
-    #Get the triage events before the last lactic acid event
-    triage_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"; time.parse_rfc3339_ns(e.timestamp) < last_lactic_acid]
-    sepsisTriage := min(triage_events) # This will be 0 if triage_events is empty
-    lactic_acid := most_recent_event
-    time.parse_rfc3339_ns(lactic_acid.timestamp) <= sepsisTriage + 3600000000000
+    reserve_cost := sum([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
+    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
+    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
+    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
+}`,
+
+`package truck_policy
+import rego.v1
+
+# Define the constant for five years in seconds
+five_years_in_seconds := 5 * 365 * 24 * 60 * 60
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+# Pending condition
+pending[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Select truck (ST)"
+}
+
+# Violation condition
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    #Not needed
+    #most_recent_event.concept_name == "Select truck (ST)"
+    driver_experience_within_five_years[trace_id]
+}
+
+# Satisfied condition
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    #Not needed
+    #most_recent_event.concept_name == "Select truck (ST)"
+    not driver_experience_within_five_years[trace_id]
+}
+
+# Define a rule to check if the driver's experience is within five years
+driver_experience_within_five_years[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    event := most_recent_event
+    (time.parse_rfc3339_ns(event.timestamp) / 1000000000) - (time.parse_rfc3339_ns(event.license_first_issue) / 1000000000) <= five_years_in_seconds
 }`,
 
 }
 
 
+// Enum for the state of the constraint
+type ConstraintState int
+
+const (
+	Init     ConstraintState = 0
+	Pending  ConstraintState = 1
+	Violated ConstraintState = 2
+)
+
 type Constraint struct {
-    name              string
-    preparedEvalQuery rego.PreparedEvalQuery
-    ConstraintState   map[string]*fsm.FSM
+	name              string
+	preparedEvalQuery rego.PreparedEvalQuery
+	ConstraintState   map[string]ConstraintState // State for each case
 }
 
 type ComplianceCheckingLogic struct {
-    preparedConstraints []Constraint
-    ctx                 context.Context
+	preparedConstraints []Constraint
+	ctx                 context.Context
 }
 
+// Function that creates a prepared constraint for each constraint
 func InitComplianceCheckingLogic() (ComplianceCheckingLogic, []string) {
-    ctx := context.TODO()
-    ccLogic := ComplianceCheckingLogic{
-        preparedConstraints: []Constraint{},
-        ctx:                 ctx,
-    }
-    for i, constraint := range constraints {
-        query, err := rego.New(
-            rego.Query("data."+constraintNames[i]),
-            rego.Module(constraintNames[i], constraint),
-        ).PrepareForEval(ctx)
-        if err != nil {
-            log.Fatal(err)
-        }
-        ccLogic.preparedConstraints = append(ccLogic.preparedConstraints, Constraint{
-            name:              constraintNames[i],
-            preparedEvalQuery: query,
-            ConstraintState:   make(map[string]*fsm.FSM),
-        })
-    }
-    return ccLogic, constraintNames
+	ctx := context.TODO()
+	ccLogic := ComplianceCheckingLogic{
+		preparedConstraints: []Constraint{},
+		ctx:                 ctx,
+	}
+	for i, constraint := range constraints {
+		query, err := rego.New(
+			rego.Query("data."+constraintNames[i]),
+			rego.Module(constraintNames[i], constraint),
+		).PrepareForEval(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ccLogic.preparedConstraints = append(ccLogic.preparedConstraints, Constraint{
+			name:              constraintNames[i],
+			preparedEvalQuery: query,
+			ConstraintState:   make(map[string]ConstraintState),
+		})
+	}
+	return ccLogic, constraintNames
 }
 
+// Evaluate the event log with the prepared constraints
 func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interface{}) map[string]interface{} {
-    lastEvent := eventLog["events"].([]map[string]interface{})[len(eventLog["events"].([]map[string]interface{}))-1]
-    traceId := lastEvent["trace_concept_name"].(string)
-    for _, constraint := range ccl.preparedConstraints {
-        if _, ok := constraint.ConstraintState[traceId]; !ok {
-            constraint.ConstraintState[traceId] = getFSMfromConstraintName(constraint.name)
-        }
-    }
-    violationMap := map[string]interface{}{}
-    var wg sync.WaitGroup
-    var mu sync.Mutex
-    for _, constraint := range ccl.preparedConstraints {
-        wg.Add(1)
-        go func(constraint Constraint) {
-            defer wg.Done()
-            res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
-            if err != nil {
-                fmt.Println(err)
-                return
-            }
-            mu.Lock()
-            defer mu.Unlock()
-            for constraintName := range constraint.preparedEvalQuery.Modules() {
-                resultValue := res[0].Expressions[0].Value
-                resultValueMap, ok := resultValue.(map[string]interface{})
-                if !ok {
-                    fmt.Println(res)
-                    log.Fatalf("Failed to convert result from policy inspection")
-                }
-                violations, ok := resultValueMap["violations"].(map[string]interface{})
-                if !ok {
-                }
-                pending, ok := resultValueMap["pending"].(map[string]interface{})
-                if !ok {
-                }
-                satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
-                if !ok {
-                }
-                temporarySatisfied, ok := resultValueMap["temporary_satisfied"].(map[string]interface{})
-                if !ok {
-                }
-                temporaryViolated, ok := resultValueMap["temporary_violated"].(map[string]interface{})
-                if !ok {
-                }
-                violationMap[constraintName] = map[string]interface{}{
-                    "violations":          violations,
-                    "pending":             pending,
-                    "satisfied":           satisfied,
-                    "temporary_satisfied": temporarySatisfied,
-                    "temporary_violated":  temporaryViolated,
-                }
-                for caseId := range pending {
-                    if constraint.ConstraintState[caseId].Can("Pending") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Pending")
-                    }
-                }
-                for caseId := range violations {
-                    if constraint.ConstraintState[caseId].Can("Violated") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Violated")
-                    }
-                }
-                for caseId := range satisfied {
-                    if constraint.ConstraintState[caseId].Can("Satisfied") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Satisfied")
-                    }
-                }
-                for caseId := range temporarySatisfied {
-                    if constraint.ConstraintState[caseId].Can("TemporarySatisfied") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "TemporarySatisfied")
-                    }
-                }
-                for caseId := range temporaryViolated {
-                    if constraint.ConstraintState[caseId].Can("TemporaryViolated") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "TemporaryViolated")
-                    }
-                }
-            }
-        }(constraint)
-    }
-    wg.Wait()
-    return violationMap
+	//Get the last event from the event log
+	lastEvent := eventLog["events"].([]map[string]interface{})[len(eventLog["events"].([]map[string]interface{}))-1]
+	//Get the trace_id of the last event
+	traceId := lastEvent["trace_concept_name"].(string)
+	//If the trace_id is not in the constraint state, add it
+	for _, constraint := range ccl.preparedConstraints {
+		if _, ok := constraint.ConstraintState[traceId]; !ok {
+			constraint.ConstraintState[traceId] = Init
+		}
+	}
+	violationMap := map[string]interface{}{}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for _, constraint := range ccl.preparedConstraints {
+		wg.Add(1)
+		go func(constraint Constraint) {
+			defer wg.Done()
+			res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for constraintName := range constraint.preparedEvalQuery.Modules() {
+				resultValue := res[0].Expressions[0].Value
+				resultValueMap, ok := resultValue.(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert result from policy inspection")
+				}
+				violations, ok := resultValueMap["violations"].(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert violation from policy inspection")
+				}
+				pending, ok := resultValueMap["pending"].(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert pending from policy inspection")
+				}
+				satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert satisfied from policy inspection")
+				}
+				violationMap[constraintName] = map[string]interface{}{
+					"violations": violations,
+					"pending":    pending,
+					"satisfied":  satisfied,
+				}
+				//serve una un set di caseId processati
+				caseSet := map[string]bool{}
+				for caseId := range pending {
+					if constraint.ConstraintState[caseId] == Init {
+						constraint.ConstraintState[caseId] = Pending
+						fmt.Println("Constraint" + constraintName + " pending for case " + caseId)
+					}
+				}
+				for caseId := range violations {
+					if constraint.ConstraintState[caseId] == Pending {
+						if !caseSet[caseId] {
+							constraint.ConstraintState[caseId] = Violated
+							caseSet[caseId] = true
+							fmt.Println("Constraint" + constraintName + " violated for case " + caseId)
+						}
+					}
+				}
+				for caseId := range satisfied {
+					if constraint.ConstraintState[caseId] == Pending {
+						if !caseSet[caseId] {
+							constraint.ConstraintState[caseId] = Init
+							caseSet[caseId] = true
+							fmt.Println("Constraint" + constraintName + " satisfied for case " + caseId)
+						}
+					}
+				}
+			}
+		}(constraint)
+	}
+	wg.Wait()
+	return violationMap
 }
 
-
-func getFSMfromConstraintName(constraintName string) *fsm.FSM {
-    switch constraintName {
-case "iv_antibiotics_within_onehour":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "Pending", Src: []string{"Init"}, Dst: "Pending"},
-            {Name: "Violated", Src: []string{"Pending"}, Dst: "Violated"},
-            {Name: "Satisfied", Src: []string{"Pending"}, Dst: "Init"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
-
-case "lactic_acid_within_onehour":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "Satisfied", Src: []string{"Init"}, Dst: "Satisfied"},
-            {Name: "Violated", Src: []string{"Init"}, Dst: "Violated"},
-            {Name: "Init", Src: []string{"Satisfied"}, Dst: "Init"},
-            {Name: "Violated", Src: []string{"Diocane"}, Dst: "Violated"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
-
-    }
-    return &fsm.FSM{}
-}

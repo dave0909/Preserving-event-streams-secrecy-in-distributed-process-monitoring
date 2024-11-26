@@ -5,6 +5,7 @@ import (
 	"main/complianceCheckingLogic"
 	"main/utils/xes"
 	"main/workflowLogic"
+	"math"
 	"time"
 )
 
@@ -23,7 +24,7 @@ type ProcessState struct {
 	ComplianceCheckingViolations map[string][]ComplianceCheckingViolation
 
 	//TODO: Remove this field
-	counter int
+	Counter int
 }
 
 // Struct Event
@@ -65,6 +66,10 @@ type ProcessStateManager struct {
 	ProcessState            ProcessState
 	EventChannel            chan xes.Event
 	ExtractionManifest      map[string]interface{}
+	minDuration             float64
+	maxDuration             float64
+	totalDuration           float64
+	runStarted              time.Time
 }
 
 // Init a new ProcessStateManager
@@ -76,6 +81,8 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		ComplianceCheckingLogic: ccLogic,
 		EventChannel:            eventChannel,
 		ExtractionManifest:      extractionManifest,
+		minDuration:             math.MaxFloat64,
+		runStarted:              time.Now(),
 	}
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
@@ -121,12 +128,6 @@ func (psm *ProcessStateManager) initNewCase(caseId string) {
 
 // Handle event by EventDispatcher
 func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, timestamp string, data map[string]interface{}) {
-	//event := Event{
-	//	Activity:  eventId,
-	//	CaseId:    caseId,
-	//	Timestamp: timestamp,
-	//	Data:      data,
-	//}
 	//Check if the event exists in the workflow logic
 	firtsTs := time.Now()
 	fmt.Println("event number: ", len(psm.ProcessState.EventLog))
@@ -135,7 +136,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		fmt.Println("Unknown event")
 		return
 	}
-	psm.ProcessState.counter += 1
+	psm.ProcessState.Counter += 1
 	//Add the event to the list of events
 	//psm.ProcessState.Events = append(psm.ProcessState.Events, event)
 	eventLogEntry := map[string]interface{}{
@@ -148,13 +149,11 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	if _, ok := psm.ExtractionManifest[eventId]; ok {
 		//If the eventId is a key in the "attribute_extraction" field, extract the attributes
 		attributeExtractors := psm.ExtractionManifest[eventId].([]interface{})
-
 		for _, attrName := range attributeExtractors {
 			//If attrName is a key in data
 			if _, ok := data[attrName.(string)]; ok {
 				eventLogEntry[attrName.(string)] = data[attrName.(string)]
 			}
-
 		}
 		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 		addEventFlag = true
@@ -245,13 +244,25 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	if addEventFlag {
 		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	}
-	fmt.Println("Time for compliance checking: ", time.Since(firtsTs).Seconds())
+	//fmt.Println("Time for compliance checking: ", time.Since(firtsTs).Seconds())
 	//Clear old events
 	if len(psm.ProcessState.EventLog) == 150 {
 		//clear the events log by removing the first 100 events
 		psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
 	}
-	fmt.Println("Event number: ", psm.ProcessState.counter)
+	fmt.Println("Event number: ", psm.ProcessState.Counter)
+	// Incremental computation of duration statistics
+	duration := time.Since(firtsTs).Seconds()
+	durationFromStart := time.Since(psm.runStarted)
+	psm.totalDuration += duration
+	if duration < psm.minDuration && duration != 0 {
+		psm.minDuration = duration
+	}
+	if duration > psm.maxDuration {
+		psm.maxDuration = duration
+	}
+	averageDuration := psm.totalDuration / float64(psm.ProcessState.Counter)
+	fmt.Printf("Time from start of the run:%f, Current average duration (ms): %f, Min duration (ms): %f, Max duration (ms): %f\n", durationFromStart.Seconds(), averageDuration, psm.minDuration, psm.maxDuration)
 }
 
 //func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {
