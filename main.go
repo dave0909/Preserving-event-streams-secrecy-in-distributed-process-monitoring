@@ -28,8 +28,11 @@ func main() {
 	//	go test.PrintRamUsage(cancel)
 	//}
 	//Parse the boolean value of the simulation mode
+	if nEvents == "" {
+		nEvents = "0"
+	}
 	n, err := strconv.Atoi(nEvents)
-	if err != nil && nEvents != "" {
+	if err != nil {
 		// ... handle error
 		panic(err)
 	}
@@ -48,7 +51,7 @@ func main() {
 		attribute_extractors = nil
 	}
 	eventChannel := make(chan xes.Event)
-	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors)
+	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n)
 	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool}
 	go eventDispatcher.StartRPCServer(addr)
 	time.Sleep(2 * time.Second)

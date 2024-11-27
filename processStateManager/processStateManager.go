@@ -1,11 +1,15 @@
 package processStateManager
 
 import (
+	"encoding/csv"
 	"fmt"
+	"log"
 	"main/complianceCheckingLogic"
 	"main/utils/xes"
 	"main/workflowLogic"
 	"math"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -72,10 +76,11 @@ type ProcessStateManager struct {
 	runStarted              time.Time
 	mean                    float64
 	m2                      float64
+	stopEventNumebr         int
 }
 
 // Init a new ProcessStateManager
-func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}) ProcessStateManager {
+func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}, stopEventNumber int) ProcessStateManager {
 	//ccLogic, cNames := complianceCheckingLogic.InitComplianceCheckingLogic()
 	ccLogic, _ := complianceCheckingLogic.InitComplianceCheckingLogic()
 	psm := ProcessStateManager{
@@ -85,6 +90,7 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		ExtractionManifest:      extractionManifest,
 		minDuration:             math.MaxFloat64,
 		runStarted:              time.Now(),
+		stopEventNumebr:         stopEventNumber,
 	}
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
@@ -256,7 +262,49 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	// Calculate standard deviation
 	variance := psm.m2 / float64(psm.ProcessState.Counter)
 	stdDev := math.Sqrt(variance)
-	fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (ms): %f, Max duration (ms): %f, Std Dev (ms): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
+	fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
+	if psm.ProcessState.Counter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
+		recordDataDuration(durationFromStart, psm, stdDev)
+
+	}
+}
+
+func recordDataDuration(durationFromStart time.Duration, psm *ProcessStateManager, stdDev float64) {
+	// Ensure the directory exists
+	outputDir := "data/output"
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+		log.Fatalf("Error creating directory: %v", err)
+	}
+
+	// Open the CSV file for writing
+	filePath := filepath.Join(outputDir, "latency.csv")
+	file, err := os.Create(filePath)
+	if err != nil {
+		log.Fatalf("Error creating CSV file: %v", err)
+	}
+	defer file.Close()
+
+	// Create a CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write the header
+	header := []string{"DurationFromStart", "Mean", "MinDuration", "MaxDuration", "StdDev"}
+	if err := writer.Write(header); err != nil {
+		log.Fatalf("Error writing header to CSV file: %v", err)
+	}
+
+	// Write the duration data
+	record := []string{
+		fmt.Sprintf("%f", durationFromStart.Seconds()),
+		fmt.Sprintf("%f", psm.mean),
+		fmt.Sprintf("%f", psm.minDuration),
+		fmt.Sprintf("%f", psm.maxDuration),
+		fmt.Sprintf("%f", stdDev),
+	}
+	if err := writer.Write(record); err != nil {
+		log.Fatalf("Error writing record to CSV file: %v", err)
+	}
 }
 
 //func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {
