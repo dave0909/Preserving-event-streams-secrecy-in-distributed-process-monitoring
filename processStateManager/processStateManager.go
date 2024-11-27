@@ -70,6 +70,8 @@ type ProcessStateManager struct {
 	maxDuration             float64
 	totalDuration           float64
 	runStarted              time.Time
+	mean                    float64
+	m2                      float64
 }
 
 // Init a new ProcessStateManager
@@ -197,6 +199,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	elaboratedLog := map[string]interface{}{}
 	//elaboratedLog["events"] = psm.ProcessState.EventLog
 	elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
+	//TODO: here we should think of filtering the events only for the given case
 	psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//for constraint, result := range violationMap {
@@ -234,7 +237,6 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
 	}
 	fmt.Println("Event number: ", psm.ProcessState.Counter)
-	// Incremental computation of duration statistics
 	duration := time.Since(firtsTs).Seconds()
 	durationFromStart := time.Since(psm.runStarted)
 	psm.totalDuration += duration
@@ -244,8 +246,17 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	if duration > psm.maxDuration {
 		psm.maxDuration = duration
 	}
-	averageDuration := psm.totalDuration / float64(psm.ProcessState.Counter)
-	fmt.Printf("Time from start of the run:%f, Current average duration (ms): %f, Min duration (ms): %f, Max duration (ms): %f\n", durationFromStart.Seconds(), averageDuration, psm.minDuration, psm.maxDuration)
+
+	// Incremental calculation of mean and variance
+	delta := duration - psm.mean
+	psm.mean += delta / float64(psm.ProcessState.Counter)
+	delta2 := duration - psm.mean
+	psm.m2 += delta * delta2
+
+	// Calculate standard deviation
+	variance := psm.m2 / float64(psm.ProcessState.Counter)
+	stdDev := math.Sqrt(variance)
+	fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (ms): %f, Max duration (ms): %f, Std Dev (ms): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
 }
 
 //func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {
