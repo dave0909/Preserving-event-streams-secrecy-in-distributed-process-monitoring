@@ -78,7 +78,7 @@ TCP_IP = 'localhost'
 TCP_PORT = 1234
 BUFFER_SIZE = 1024
 
-log_path = '../data/xes/motivating.xes'  # Replace with the path to your XES file
+log_path = '../data/xes/trafficFines.xes'  # Replace with the path to your XES file
 log = xes_importer.apply(log_path)
 print(log[0])
 

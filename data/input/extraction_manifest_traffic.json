@@ -1,0 +1,13 @@
+{
+  "activity_name": "concept:name",
+  "activity_timestamp": "time:timestamp",
+  "case_id": "concept:name",
+  "attribute_extraction": {
+    "Add penalty": [],
+    "Payment":["paymentAmount"],
+    "Send for Credit Collection": [],
+    "Insert Fine Notification":[],
+    "Create Fine Notification":[],
+    "Send Fine": []
+  }
+}

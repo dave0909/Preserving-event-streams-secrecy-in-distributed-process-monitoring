@@ -197,50 +197,33 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	elaboratedLog := map[string]interface{}{}
 	//elaboratedLog["events"] = psm.ProcessState.EventLog
 	elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
-	violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
-	for constraint, result := range violationMap {
-		castedResult := result.(map[string]interface{})
-		for caseId, _ := range castedResult {
-			//TODO: be carefull here, we are assuming that each case id in the constraint map is violation (case:true)
-			//TODO: I'm not sure about this, i'don't know if there may be cases in which case:false (no violation). CHECK.
-			//Previous version 2. Chek if the violation is already in the violations map
-			//if _, ok := psm.ProcessState.ComplianceCheckingViolations[constraint][caseId]; !ok {
-			//	//If the violation is not in the map, add it
-			//	psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] = ComplianceCheckingViolation{
-			//		ViolatedConstraint: constraint,
-			//		InvolvedCase:       caseId,
-			//		Timestamp:          timestamp,
-			//	}
-			//}
-			//Previous version 1
-			//if !psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] {
-			//	log.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
-			//	psm.ProcessState.ComplianceCheckingViolations[constraint][caseId] = true
-			//	//TODO: test all the constraints
-			//}
-			//Check if the case has already a compliance checkiong violation for the given constraint
-			if _, ok := psm.ProcessState.ComplianceCheckingViolations[caseId]; !ok {
-				psm.ProcessState.ComplianceCheckingViolations[caseId] = []ComplianceCheckingViolation{}
-			}
-			//Chek if the case has already a violation for the given constraint
-			violated := false
-			for _, violation := range psm.ProcessState.ComplianceCheckingViolations[caseId] {
-				if violation.ViolatedConstraint == constraint {
-					violated = true
-					break
-				}
-			}
-			if !violated {
-				//If the case has not a violation for the given constraint, add it
-				psm.ProcessState.ComplianceCheckingViolations[caseId] = append(psm.ProcessState.ComplianceCheckingViolations[caseId], ComplianceCheckingViolation{
-					ViolatedConstraint: constraint,
-					InvolvedCase:       caseId,
-					Timestamp:          timestamp,
-				})
-				fmt.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
-			}
-		}
-	}
+	psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
+	//violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
+	//for constraint, result := range violationMap {
+	//	castedResult := result.(map[string]interface{})
+	//	for caseId, _ := range castedResult {
+	//		if _, ok := psm.ProcessState.ComplianceCheckingViolations[caseId]; !ok {
+	//			psm.ProcessState.ComplianceCheckingViolations[caseId] = []ComplianceCheckingViolation{}
+	//		}
+	//		//Chek if the case has already a violation for the given constraint
+	//		violated := false
+	//		for _, violation := range psm.ProcessState.ComplianceCheckingViolations[caseId] {
+	//			if violation.ViolatedConstraint == constraint {
+	//				violated = true
+	//				break
+	//			}
+	//		}
+	//		if !violated {
+	//			//If the case has not a violation for the given constraint, add it
+	//			psm.ProcessState.ComplianceCheckingViolations[caseId] = append(psm.ProcessState.ComplianceCheckingViolations[caseId], ComplianceCheckingViolation{
+	//				ViolatedConstraint: constraint,
+	//				InvolvedCase:       caseId,
+	//				Timestamp:          timestamp,
+	//			})
+	//			fmt.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
+	//		}
+	//	}
+	//}
 	if addEventFlag {
 		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	}

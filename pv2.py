@@ -839,26 +839,36 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interfa
                 for caseId := range pending {
                     if constraint.ConstraintState[caseId].Can("Pending") {
                         constraint.ConstraintState[caseId].Event(ccl.ctx, "Pending")
-                    }
-                }
-                for caseId := range violations {
-                    if constraint.ConstraintState[caseId].Can("Violated") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Violated")
-                    }
-                }
-                for caseId := range satisfied {
-                    if constraint.ConstraintState[caseId].Can("Satisfied") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Satisfied")
+                        fmt.Println("Constraint ",constraintName,"in pending state for case ",caseId)
+
                     }
                 }
                 for caseId := range temporarySatisfied {
                     if constraint.ConstraintState[caseId].Can("TemporarySatisfied") {
                         constraint.ConstraintState[caseId].Event(ccl.ctx, "TemporarySatisfied")
+                        fmt.Println("Constraint ",constraintName,"in temporary satisfied state for case ",caseId)
+
                     }
                 }
                 for caseId := range temporaryViolated {
                     if constraint.ConstraintState[caseId].Can("TemporaryViolated") {
                         constraint.ConstraintState[caseId].Event(ccl.ctx, "TemporaryViolated")
+                        fmt.Println("Constraint ",constraintName,"in temporary violated state for case ",caseId)
+
+                    }
+                }
+                for caseId := range violations {
+                    if constraint.ConstraintState[caseId].Can("Violated") {
+                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Violated")
+                        fmt.Println("Constraint ",constraintName,"in violated state for case ",caseId)
+
+                    }
+                }
+                for caseId := range satisfied {
+                    if constraint.ConstraintState[caseId].Can("Satisfied") {
+                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Satisfied")
+                        fmt.Println("Constraint ",constraintName,"in satisfied state for case ",caseId)
+
                     }
                 }
             }
@@ -872,13 +882,22 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interfa
     return "\n".join(go_code)
 
 """
-python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true
-python3 pv2.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_sepsis.json true true
 
+python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true 
+python3 processvaultcompiler.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_sepsis.json true true
+RUN IN NON SIMULATION MODE
+python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 10
+
+RUN SEPSIS TEST IN NON SIMULATION
+python3 pv2.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_sepsis.json false true 15200
+UN MOTIVATING TEST IN NON SIMULATION
+python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 35999
+RUN TRAFFIC FINES TEST IN SIMULATION
+python3 pv2.py ./data/BPMN/trafficFines.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/trafficFines ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_traffic.json true false 10000
 """
 
 def main():
-    if len(sys.argv) != 9:
+    if len(sys.argv) != 10:
         print("Usage: python processvaultcompiler.py <bpmn_file_path> <output_go_file_path>")
         sys.exit(1)
 
@@ -890,6 +909,7 @@ def main():
     extraction_manifest_file_path = sys.argv[6]
     isInSimulation = sys.argv[7]
     isInTesting = sys.argv[8]
+    nEvents = sys.argv[9]
 
     control_flow_logic = generate_control_flow_logic(bpmn_file_path)
     compliance_checking_logic = generate_compliance_checking_logic(constraint_folder_path)
@@ -911,10 +931,10 @@ def main():
     #Set permissions to read and write for everyone (666)
     os.chmod(output_go_file_path, 0o666)
     if isInSimulation=="true":
-        command="ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents
     else:
-        command="ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting
-    # Execute the build and run commands
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents
+        # Execute the build and run commands
     try:
         print("Building and running the Process Vault...")
         subprocess.run(

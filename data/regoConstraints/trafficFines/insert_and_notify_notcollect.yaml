@@ -1,0 +1,27 @@
+#Write the automation for these transitions like the other files
+#Init---> TemporarySatisfied, Satisfied
+#TemporarySatisfied---> Satisfied, TemporaryViolated
+#TemporaryViolated---> Satisfied
+
+initial_state: Init
+states:
+  - Init
+  - TemporaryViolated
+  - TemporarySatisfied
+  - Satisfied
+transitions:
+  - from: Init
+    to: TemporarySatisfied
+    event: TemporarySatisfied
+  - from: Init
+    to: Satisfied
+    event: Satisfied
+  - from: TemporarySatisfied
+    to: Satisfied
+    event: Satisfied
+  - from: TemporarySatisfied
+    to: TemporaryViolated
+    event: TemporaryViolated
+  - from: TemporaryViolated
+    to: Satisfied
+    event: Satisfied
