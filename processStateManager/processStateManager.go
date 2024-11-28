@@ -26,7 +26,6 @@ type ProcessState struct {
 	//ComplianceCheckingViolations map[string]map[string]bool
 	//Compliance checking violations
 	ComplianceCheckingViolations map[string][]ComplianceCheckingViolation
-
 	//TODO: Remove this field
 	Counter int
 }
@@ -199,13 +198,11 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 			//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
 		}
 	}
-	//Print time passed from firstTS
 	fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
 	//elaboratedLog := psm.prepareEventLog()
 	elaboratedLog := map[string]interface{}{}
 	//elaboratedLog["events"] = psm.ProcessState.EventLog
 	elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
-	//TODO: here we should think of filtering the events only for the given case
 	psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//for constraint, result := range violationMap {
@@ -265,7 +262,6 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
 	if psm.ProcessState.Counter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
 		recordDataDuration(durationFromStart, psm, stdDev)
-
 	}
 }
 

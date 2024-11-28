@@ -16,7 +16,7 @@ df_simulation.sort_index(inplace=True)
 #df_simulation = df_simulation.iloc[::1000]
 
 #df_sepsis = pd.read_csv('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_segment_size/test_sepsis/segsize_2/test_2_1.csv', decimal='.', header=0,)
-df_sepsis = pd.read_csv('../data/testResults/memoryusage_sepsis.csv', decimal='.', header=0,)
+df_sepsis = pd.read_csv('../data/testResults/memory_usage_sepsis.csv', decimal='.', header=0,)
 df_sepsis = df_sepsis._append({'Timestamp': min(df_sepsis['Timestamp']) - 1, 'Memory Usage': 0}, ignore_index=True)
 df_sepsis.loc[-1] = [min(df_sepsis['Timestamp']) - 1, 0]  # adding a row
 df_sepsis.index = df_sepsis.index + 1  # shifting index
@@ -96,7 +96,7 @@ plt.grid(True, linestyle='--')
 plt.tight_layout()
 
 plt.xlim([0, 100])
-plt.ylim([0,8])
+plt.ylim([0,10])
 
 
 plt.legend (loc='upper right', fontsize=25)
