@@ -16,7 +16,7 @@ temporary_satisfied[trace_id] if {
 }
 temporary_violated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name != "Send for Credit Collection"
+    most_recent_event.concept_name == "Send for Credit Collection"
 }
 
 

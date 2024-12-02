@@ -7,8 +7,21 @@ import (
     "github.com/open-policy-agent/opa/rego"
     "sync"
     "log"
-    "github.com/looplab/fsm"
 )
+type ConstraintState int
+const (
+	Init ConstraintState = iota
+	Pending
+	Violated
+	Satisfied
+	TemporarySatisfied
+	TemporaryViolated
+)
+
+// Custom FSM struct using an integer matrix for transitions
+type CustomFSM struct {
+	Transitions [][]int
+}
 
 // Generated process constraints code
 
@@ -193,7 +206,7 @@ temporary_satisfied[trace_id] if {
 }
 temporary_violated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name != "Send for Credit Collection"
+    most_recent_event.concept_name == "Send for Credit Collection"
 }
 
 
@@ -228,240 +241,242 @@ satisfied[trace_id] if {
 }
 
 
+// Method to check possible next states
+func (fsm *CustomFSM) PossibleNextStates(currentState int) []int {
+	return fsm.Transitions[currentState]
+}
+
+// Method to check if there is a transition from state s1 to state s2
+func (fsm *CustomFSM) HasTransition(s1, s2 int) bool {
+	for _, nextState := range fsm.PossibleNextStates(s1) {
+		if nextState == s2 {
+			return true
+		}
+	}
+	return false
+}
 type Constraint struct {
-    name              string
-    preparedEvalQuery rego.PreparedEvalQuery
-    ConstraintState   map[string]*fsm.FSM
+	name              string
+	preparedEvalQuery rego.PreparedEvalQuery
+	fsm               *CustomFSM
+	ConstraintState   map[string]ConstraintState
 }
 
 type ComplianceCheckingLogic struct {
-    preparedConstraints []Constraint
-    ctx                 context.Context
+	preparedConstraints []Constraint
+	ctx                 context.Context
 }
 
+// Function that creates a prepared constraint for each constraint
 func InitComplianceCheckingLogic() (ComplianceCheckingLogic, []string) {
-    ctx := context.TODO()
-    ccLogic := ComplianceCheckingLogic{
-        preparedConstraints: []Constraint{},
-        ctx:                 ctx,
-    }
-    for i, constraint := range constraints {
-        query, err := rego.New(
-            rego.Query("data."+constraintNames[i]),
-            rego.Module(constraintNames[i], constraint),
-        ).PrepareForEval(ctx)
-        if err != nil {
-            log.Fatal(err)
-        }
-        ccLogic.preparedConstraints = append(ccLogic.preparedConstraints, Constraint{
-            name:              constraintNames[i],
-            preparedEvalQuery: query,
-            ConstraintState:   make(map[string]*fsm.FSM),
-        })
-    }
-    return ccLogic, constraintNames
+	ctx := context.TODO()
+	ccLogic := ComplianceCheckingLogic{
+		preparedConstraints: []Constraint{},
+		ctx:                 ctx,
+	}
+	for i, constraint := range constraints {
+		query, err := rego.New(
+			rego.Query("data."+constraintNames[i]),
+			rego.Module(constraintNames[i], constraint),
+		).PrepareForEval(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ccLogic.preparedConstraints = append(ccLogic.preparedConstraints, Constraint{
+			name:              constraintNames[i],
+			preparedEvalQuery: query,
+			fsm:               fsmMap[constraintNames[i]],
+			ConstraintState:   make(map[string]ConstraintState),
+		})
+	}
+
+	return ccLogic, constraintNames
 }
 
+// Evaluate the event log with the prepared constraints
 func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interface{}) map[string]interface{} {
-    lastEvent := eventLog["events"].([]map[string]interface{})[len(eventLog["events"].([]map[string]interface{}))-1]
-    traceId := lastEvent["trace_concept_name"].(string)
-    for _, constraint := range ccl.preparedConstraints {
-        if _, ok := constraint.ConstraintState[traceId]; !ok {
-            constraint.ConstraintState[traceId] = getFSMfromConstraintName(constraint.name)
-        }
-    }
-    violationMap := map[string]interface{}{}
-    var wg sync.WaitGroup
-    var mu sync.Mutex
-    for _, constraint := range ccl.preparedConstraints {
-        wg.Add(1)
-        go func(constraint Constraint) {
-            defer wg.Done()
-            res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
-            if err != nil {
-                fmt.Println(err)
-                return
-            }
-            mu.Lock()
-            defer mu.Unlock()
-            for constraintName := range constraint.preparedEvalQuery.Modules() {
-                resultValue := res[0].Expressions[0].Value
-                resultValueMap, ok := resultValue.(map[string]interface{})
-                if !ok {
-                    fmt.Println(res)
-                    log.Fatalf("Failed to convert result from policy inspection")
-                }
-                violations, ok := resultValueMap["violations"].(map[string]interface{})
-                if !ok {
-                }
-                pending, ok := resultValueMap["pending"].(map[string]interface{})
-                if !ok {
-                }
-                satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
-                if !ok {
-                }
-                temporarySatisfied, ok := resultValueMap["temporary_satisfied"].(map[string]interface{})
-                if !ok {
-                }
-                temporaryViolated, ok := resultValueMap["temporary_violated"].(map[string]interface{})
-                if !ok {
-                }
-                violationMap[constraintName] = map[string]interface{}{
-                    "violations":          violations,
-                    "pending":             pending,
-                    "satisfied":           satisfied,
-                    "temporary_satisfied": temporarySatisfied,
-                    "temporary_violated":  temporaryViolated,
-                }
-                for caseId := range pending {
-                    if constraint.ConstraintState[caseId].Can("Pending") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Pending")
-                        fmt.Println("Constraint ",constraintName,"in pending state for case ",caseId)
+	lastEvent := eventLog["events"].([]map[string]interface{})[len(eventLog["events"].([]map[string]interface{}))-1]
+	traceId := lastEvent["trace_concept_name"].(string)
+	for _, constraint := range ccl.preparedConstraints {
+		if _, ok := constraint.ConstraintState[traceId]; !ok {
+			constraint.ConstraintState[traceId] = Init // Init state
+		}
+	}
+	violationMap := map[string]interface{}{}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for _, constraint := range ccl.preparedConstraints {
+		wg.Add(1)
+		go func(constraint Constraint) {
+			defer wg.Done()
+			res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for constraintName := range constraint.preparedEvalQuery.Modules() {
+				resultValue := res[0].Expressions[0].Value
+				resultValueMap, ok := resultValue.(map[string]interface{})
+				if !ok {
+					fmt.Println(res)
+					log.Fatalf("Failed to convert result from policy inspection")
+				}
+				//currentState := constraint.ConstraintState[traceId]
+				//nextStates := constraint.fsm.PossibleNextStates(int(currentState))
+				violations, ok := resultValueMap["violations"].(map[string]interface{})
+				if !ok {
+				}
+				pending, ok := resultValueMap["pending"].(map[string]interface{})
+				if !ok {
+				}
+				satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
+				if !ok {
+				}
+				temporarySatisfied, ok := resultValueMap["temporary_satisfied"].(map[string]interface{})
+				if !ok {
+				}
+				temporaryViolated, ok := resultValueMap["temporary_violated"].(map[string]interface{})
+				if !ok {
+				}
+				for caseId := range pending {
+					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 1) {
+						constraint.ConstraintState[caseId] = Pending
+						fmt.Println("Constraint ", constraintName, "in pending state for case ", caseId)
 
-                    }
-                }
-                for caseId := range temporarySatisfied {
-                    if constraint.ConstraintState[caseId].Can("TemporarySatisfied") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "TemporarySatisfied")
-                        fmt.Println("Constraint ",constraintName,"in temporary satisfied state for case ",caseId)
+					}
+				}
+				for caseId := range temporarySatisfied {
+					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 4) {
+						constraint.ConstraintState[caseId] = TemporarySatisfied
+						fmt.Println("Constraint ", constraintName, "in temporary satisfied state for case ", caseId)
 
-                    }
-                }
-                for caseId := range temporaryViolated {
-                    if constraint.ConstraintState[caseId].Can("TemporaryViolated") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "TemporaryViolated")
-                        fmt.Println("Constraint ",constraintName,"in temporary violated state for case ",caseId)
+					}
+				}
+				for caseId := range temporaryViolated {
+					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 5) {
+						constraint.ConstraintState[caseId] = TemporaryViolated
+						fmt.Println("Constraint ", constraintName, "in temporary violated state for case ", caseId)
 
-                    }
-                }
-                for caseId := range violations {
-                    if constraint.ConstraintState[caseId].Can("Violated") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Violated")
-                        fmt.Println("Constraint ",constraintName,"in violated state for case ",caseId)
+					}
+				}
+				for caseId := range violations {
+					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 2) {
+						constraint.ConstraintState[caseId] = Violated
+						fmt.Println("Constraint ", constraintName, "in violated state for case ", caseId)
 
-                    }
-                }
-                for caseId := range satisfied {
-                    if constraint.ConstraintState[caseId].Can("Satisfied") {
-                        constraint.ConstraintState[caseId].Event(ccl.ctx, "Satisfied")
-                        fmt.Println("Constraint ",constraintName,"in satisfied state for case ",caseId)
-
-                    }
-                }
-            }
-        }(constraint)
-    }
-    wg.Wait()
-    return violationMap
+					}
+				}
+				for caseId := range satisfied {
+					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 3) {
+						constraint.ConstraintState[caseId] = Satisfied
+						fmt.Println("Constraint ", constraintName, "in satisfied state for case ", caseId)
+					}
+				}
+				violationMap[constraintName] = map[string]interface{}{
+					"violations":          resultValueMap["violations"],
+					"pending":             resultValueMap["pending"],
+					"satisfied":           resultValueMap["satisfied"],
+					"temporary_satisfied": resultValueMap["temporary_satisfied"],
+					"temporary_violated":  resultValueMap["temporary_violated"],
+				}
+			}
+		}(constraint)
+	}
+	wg.Wait()
+	return violationMap
 }
 
 
-func getFSMfromConstraintName(constraintName string) *fsm.FSM {
-    switch constraintName {
-case "appeal_notcollect":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Violated", Src: []string{"TemporarySatisfied"}, Dst: "Violated"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+var fsmMap = map[string]*CustomFSM{
 
-case "balance_notcollect":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Satisfied", Src: []string{"Init"}, Dst: "Satisfied"},
-            {Name: "Satisfied", Src: []string{"TemporaryViolated"}, Dst: "Satisfied"},
-            {Name: "TemporaryViolated", Src: []string{"TemporarySatisfied"}, Dst: "TemporaryViolated"},
-            {Name: "Satisfied", Src: []string{"TemporarySatisfied"}, Dst: "Satisfied"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+"appeal_notcollect": {
+    Transitions: [][]int{
+        {4},
+        {},
+        {},
+        {},
+        {2},
+        {},
+    },
+},
 
-case "case_start":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Violated", Src: []string{"TemporarySatisfied"}, Dst: "Violated"},
-            {Name: "Satisfied", Src: []string{"Init"}, Dst: "Satisfied"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+"balance_notcollect": {
+    Transitions: [][]int{
+        {4, 3},
+        {},
+        {},
+        {},
+        {5, 3},
+        {3},
+    },
+},
 
-case "delay_no_collect":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "TemporaryViolated", Src: []string{"Init"}, Dst: "TemporaryViolated"},
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Satisfied", Src: []string{"Init"}, Dst: "Satisfied"},
-            {Name: "TemporarySatisfied", Src: []string{"TemporaryViolated"}, Dst: "TemporarySatisfied"},
-            {Name: "Satisfied", Src: []string{"TemporaryViolated"}, Dst: "Satisfied"},
-            {Name: "Violated", Src: []string{"TemporarySatisfied"}, Dst: "Violated"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+"case_start": {
+    Transitions: [][]int{
+        {4, 3},
+        {},
+        {},
+        {},
+        {2},
+        {},
+    },
+},
 
-case "dismissal_notinsert":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Violated", Src: []string{"TemporarySatisfied"}, Dst: "Violated"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+"delay_no_collect": {
+    Transitions: [][]int{
+        {5, 4, 3},
+        {},
+        {},
+        {},
+        {2},
+        {4, 3},
+    },
+},
 
-case "insert_and_notify_notcollect":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Satisfied", Src: []string{"Init"}, Dst: "Satisfied"},
-            {Name: "Satisfied", Src: []string{"TemporarySatisfied"}, Dst: "Satisfied"},
-            {Name: "TemporaryViolated", Src: []string{"TemporarySatisfied"}, Dst: "TemporaryViolated"},
-            {Name: "Satisfied", Src: []string{"TemporaryViolated"}, Dst: "Satisfied"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+"dismissal_notinsert": {
+    Transitions: [][]int{
+        {4},
+        {},
+        {},
+        {},
+        {2},
+        {},
+    },
+},
 
-case "no_insert_no_collect":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "Satisfied", Src: []string{"Init"}, Dst: "Satisfied"},
-            {Name: "TemporaryViolated", Src: []string{"Init"}, Dst: "TemporaryViolated"},
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Satisfied", Src: []string{"TemporarySatisfied"}, Dst: "Satisfied"},
-            {Name: "TemporaryViolated", Src: []string{"TemporarySatisfied"}, Dst: "TemporaryViolated"},
-            {Name: "Satisfied", Src: []string{"TemporaryViolated"}, Dst: "Satisfied"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+"insert_and_notify_notcollect": {
+    Transitions: [][]int{
+        {4, 3},
+        {},
+        {},
+        {},
+        {3, 5},
+        {3},
+    },
+},
 
-case "two_create_send_notinsertfine":
-    finitestate := fsm.NewFSM(
-        "Init",
-        fsm.Events{
-            {Name: "TemporarySatisfied", Src: []string{"Init"}, Dst: "TemporarySatisfied"},
-            {Name: "Violated", Src: []string{"TemporarySatisfied"}, Dst: "Violated"},
-            {Name: "Satisfied", Src: []string{"TemporarySatisfied"}, Dst: "Satisfied"},
-        },
-        fsm.Callbacks{},
-    )
-    return finitestate
+"no_insert_no_collect": {
+    Transitions: [][]int{
+        {3, 5, 4},
+        {},
+        {},
+        {},
+        {3, 5},
+        {3},
+    },
+},
 
-    }
-    return &fsm.FSM{}
+"two_create_send_notinsertfine": {
+    Transitions: [][]int{
+        {4},
+        {},
+        {},
+        {},
+        {2, 3},
+        {},
+    },
+},
+
 }
