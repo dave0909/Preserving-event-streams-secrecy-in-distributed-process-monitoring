@@ -269,6 +269,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	variance := psm.m2 / float64(psm.ProcessState.Counter)
 	stdDev := math.Sqrt(variance)
 	fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
+	fmt.Println(psm.ProcessState.Counter, psm.stopEventNumebr)
 	if psm.ProcessState.Counter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
 		recordDataDuration(durationFromStart, psm, stdDev)
 	}
