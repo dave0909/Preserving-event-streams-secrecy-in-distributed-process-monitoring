@@ -82,7 +82,14 @@ log_path = '../data/xes/motivating.xes'  # Replace with the path to your XES fil
 log = xes_importer.apply(log_path)
 print(log[0])
 
-
+#Funtion that returns a standard event at the end trace. The result value is a xes string
+def create_final_event_xml_string(trace):
+    trace_name = trace.attributes["concept:name"] if "concept:name" in trace.attributes else "case_unknown"
+    event_xml = f"<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version=\"1.0RC7\" xes.features=\"nested-attributes\" xes.version=\"1.0\" xmlns=\"http://www.xes-standard.org/\">"
+    event_xml += f"<trace><string key=\"concept:name\" value=\"{trace_name}\"/><event>"
+    event_xml+="<event><string key=\"concept:name\" value=\"EOT_EVENT\"/><date key=\"time:timestamp\" value=\"2014-05-19T20:05:46.000+02:00\"/></event>"
+    event_xml += "</event></trace></log></org.deckfour.xes.model.impl.XTraceImpl>\n"
+    return event_xml
 def create_event_xml_string(trace, event):
     trace_name = trace.attributes["concept:name"] if "concept:name" in trace.attributes else "case_unknown"
     event_xml = f"<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version=\"1.0RC7\" xes.features=\"nested-attributes\" xes.version=\"1.0\" xmlns=\"http://www.xes-standard.org/\">"
@@ -109,7 +116,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
     server_socket.bind((TCP_IP, TCP_PORT))
     server_socket.listen(1)
     print(f"Listening on {TCP_IP}:{TCP_PORT}...")
-
     while True:
         client_socket, client_address = server_socket.accept()
         print(f"Connection from {client_address} established.")
@@ -120,7 +126,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
                     event_string = create_event_xml_string(trace, event)
                     client_socket.sendall(event_string.encode())
                     print(f"Sent event: {event_string}")
-                    time.sleep(0.05)
+                    #time.sleep(0.00)
+                end_of_trace=create_final_event_xml_string(trace)
+                client_socket.sendall(event_string.encode())
         except Exception as e:
             print(f"An error occurred: {e}")
             client_socket.close()
