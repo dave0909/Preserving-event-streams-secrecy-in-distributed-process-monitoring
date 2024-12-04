@@ -78,7 +78,7 @@ TCP_IP = 'localhost'
 TCP_PORT = 1234
 BUFFER_SIZE = 1024
 
-log_path = '../data/xes/trafficFines.xes'  # Replace with the path to your XES file
+log_path = '../data/xes/motivating.xes'  # Replace with the path to your XES file
 log = xes_importer.apply(log_path)
 print(log[0])
 
@@ -126,9 +126,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
                     event_string = create_event_xml_string(trace, event)
                     client_socket.sendall(event_string.encode())
                     print(f"Sent event: {event_string}")
-                    #time.sleep(0.00)
-                end_of_trace=create_final_event_xml_string(trace)
-                client_socket.sendall(event_string.encode())
+                    time.sleep(0.01)
+                #end_of_trace=create_final_event_xml_string(trace)
+                #client_socket.sendall(event_string.encode())
         except Exception as e:
             print(f"An error occurred: {e}")
             client_socket.close()

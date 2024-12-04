@@ -785,8 +785,8 @@ func InitComplianceCheckingLogic() (ComplianceCheckingLogic, []string) {
     return ccLogic, constraintNames
 }
 
-func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interface{}) map[string]interface{} {
-    lastEvent := eventLog["events"].([]map[string]interface{})[len(eventLog["events"].([]map[string]interface{}))-1]
+func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[string]interface{}) map[string]interface{} {
+	lastEvent := eventLog["events"][len(eventLog["events"])-1]
     traceId := lastEvent["trace_concept_name"].(string)
     for _, constraint := range ccl.preparedConstraints {
         if _, ok := constraint.ConstraintState[traceId]; !ok {

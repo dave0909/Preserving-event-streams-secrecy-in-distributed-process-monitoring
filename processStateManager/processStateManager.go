@@ -200,9 +200,18 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	}
 	fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
 	//elaboratedLog := psm.prepareEventLog()
-	elaboratedLog := map[string]interface{}{}
-	//elaboratedLog["events"] = psm.ProcessState.EventLog
-	elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
+	elaboratedLog := map[string][]map[string]interface{}{}
+	//Filter the event log to compute only the events with the same case id
+	//TODO: comment this go back as before
+	elaboratedLog["events"] = []map[string]interface{}{}
+	for _, event := range psm.ProcessState.EventLog {
+		if event["trace_concept_name"] == caseId {
+			elaboratedLog["events"] = append(elaboratedLog["events"], event)
+		}
+	}
+	//elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
+	elaboratedLog["events"] = append(elaboratedLog["events"], eventLogEntry)
+	fmt.Println(elaboratedLog)
 	psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//for constraint, result := range violationMap {
