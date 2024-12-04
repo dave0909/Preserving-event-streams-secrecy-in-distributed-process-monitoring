@@ -31,6 +31,8 @@ func main() {
 	if nEvents == "" {
 		nEvents = "0"
 	}
+	//fmt.Println("Number of processed events: ", nEvents)
+
 	n, err := strconv.Atoi(nEvents)
 	if err != nil {
 		// ... handle error
@@ -152,7 +154,7 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 	defer ticker.Stop()
 
 	for {
-		fmt.Println(psm.ProcessState.Counter)
+		fmt.Println(psm.ProcessState.Counter, nEvents)
 		if psm.ProcessState.Counter == nEvents {
 			break
 		}

@@ -969,7 +969,7 @@ python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/work
 RUN SEPSIS TEST IN NON SIMULATION
 python3 pv3.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_sepsis.json false true 15200
 UN MOTIVATING TEST IN NON SIMULATION
-python3 pv3.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 35999
+python3 pv3.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 35999
 RUN TRAFFIC FINES TEST IN SIMULATION
 python3 pv3.py ./data/BPMN/trafficFines.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/trafficFines ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_traffic.json true false 10000
 """
