@@ -238,9 +238,12 @@ def generate_go_code_from_petri_net(places, transitions, input_matrix, output_ma
     go_code.append(f"var initialMarking = []int{{{', '.join(map(str, initial_marking))}}}\n")
     # Add the list of transitions associated with gates
     go_code.append("// Indices of transitions associated with gateways\n")
-    go_code.append("var silentTransitionIndices = []int{\n")
-    go_code.append(", ".join([str(transition_ids.index(t)) for t in silent_transitions])+",")
-    go_code.append("\n}\n")
+    if len(silent_transitions) > 0:
+        go_code.append("var silentTransitionIndices = []int{\n")
+        go_code.append(", ".join([str(transition_ids.index(t)) for t in silent_transitions])+",")
+        go_code.append("\n}\n")
+    else:
+        go_code.append("var silentTransitionIndices = []int{}\n")
     # Define the WorkflowLogic structure and InitWorkflowLogic function
     go_code.append("""
 type WorkflowLogic struct {
@@ -382,7 +385,6 @@ func (wf *WorkflowLogic) GetEnabledTransitionsForTokenId(tokenId int) []string {
     # Get index of source and sink places
     source_index = [pl.name for pl in places].index("source")
     sink_index = [pl.name for pl in places].index("sink")
-
     # Generate Go code for source and sink index function
     go_code.append("func (wf *WorkflowLogic) GetSourceAndSinkIndices() (int, int) {")
     go_code.append(f"    return {source_index}, {sink_index} // source index, sink index")
@@ -470,7 +472,7 @@ def main():
 #                                              silent_transition)
 #     return go_code
 def parse_pnml_to_petri(pnml_file_path):
-    net, initial_marking, final_marking = pnml_importer.apply(pnml_file_path)
+    net, initial_marking, final_marking = pnml_importer.import_net(pnml_file_path)
     trans_names = {t.name: t.label for t in net.transitions}
     silent_transitions = {t.name for t in net.transitions if t.label is None}
     return net, trans_names, silent_transitions
@@ -480,9 +482,25 @@ def generate_control_flow_logic(file_path):
         petrinet, trans_names, silent_transition = parse_bpmn_to_petri(file_path)
     elif file_path.endswith(".pnml"):
         petrinet, trans_names, silent_transition = parse_pnml_to_petri(file_path)
+        #find the index of the input place and the output place
+        #the input place is a place that in petrinet has no input transition
+        #the output place is a place that in petrinet has no output transition
+        input_place_index=-1
+        output_place_index=-1
+        for i, place in enumerate(petrinet.places):
+            print(place.in_arcs)
+            if len(place.in_arcs)==0:
+                input_place_index=i
+                place.name="source"
+            if len(place.out_arcs)==0:
+                output_place_index=i
+                place.name="sink"
+        if input_place_index==-1 or output_place_index==-1:
+            raise ValueError("The input and output place are not found")
+
     else:
         raise ValueError("Unsupported file type. Please use a .bpmn or .pnml file.")
-
+    print(petrinet)
     places = sorted(petrinet.places, key=lambda place: place.name)
     transitions = sorted(petrinet.transitions, key=lambda transition: trans_names[transition.name])
     silent_transition = sorted(silent_transition)
