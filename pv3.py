@@ -443,7 +443,6 @@ def generate_control_flow_logic(file_path):
         input_place_index=-1
         output_place_index=-1
         for i, place in enumerate(petrinet.places):
-            print(place.in_arcs)
             if len(place.in_arcs)==0:
                 input_place_index=i
                 place.name="source"
@@ -455,7 +454,6 @@ def generate_control_flow_logic(file_path):
 
     else:
         raise ValueError("Unsupported file type. Please use a .bpmn or .pnml file.")
-    print(petrinet)
     places = sorted(petrinet.places, key=lambda place: place.name)
     transitions = sorted(petrinet.transitions, key=lambda transition: trans_names[transition.name])
     silent_transition = sorted(silent_transition)
@@ -680,7 +678,6 @@ func getFSMfromConstraintName(constraintName string) *fsm.FSM {
     switch constraintName {"""
     for constraint_name in constraint_names:
         yaml_file_path = os.path.join(constraint_folder_path, f"{constraint_name}.yaml")
-        print(yaml_file_path)
         if os.path.exists(yaml_file_path):
             fsm_data = parse_yaml_file(yaml_file_path)
             fsm_code += generate_fsm_code(constraint_name, fsm_data)
