@@ -238,9 +238,12 @@ def generate_go_code_from_petri_net(places, transitions, input_matrix, output_ma
     go_code.append(f"var initialMarking = []int{{{', '.join(map(str, initial_marking))}}}\n")
     # Add the list of transitions associated with gates
     go_code.append("// Indices of transitions associated with gateways\n")
-    go_code.append("var silentTransitionIndices = []int{\n")
-    go_code.append(", ".join([str(transition_ids.index(t)) for t in silent_transitions])+",")
-    go_code.append("\n}\n")
+    if len(silent_transitions) > 0:
+        go_code.append("var silentTransitionIndices = []int{\n")
+        go_code.append(", ".join([str(transition_ids.index(t)) for t in silent_transitions])+",")
+        go_code.append("\n}\n")
+    else:
+        go_code.append("var silentTransitionIndices = []int{}\n")
     # Define the WorkflowLogic structure and InitWorkflowLogic function
     go_code.append("""
 type WorkflowLogic struct {
@@ -413,52 +416,6 @@ def generate_input_output_matrices(places, transitions, arcs):
 
 
 
-
-
-
-def main():
-    if len(sys.argv) != 10:
-        print("Usage: python processvaultcompiler.py <bpmn_file_path> <output_go_file_path>")
-        sys.exit(1)
-
-    bpmn_file_path = sys.argv[1]
-    output_go_file_path = sys.argv[2]
-    constraint_folder_path=sys.argv[3]
-    output_go_file_path_compliance = sys.argv[4]
-    event_dispatcher_address= sys.argv[5]
-    extraction_manifest_file_path = sys.argv[6]
-    isInSimulation = sys.argv[7]
-    isInTesting = sys.argv[8]
-    nEvents = sys.argv[9]
-
-    control_flow_logic = generate_control_flow_logic(bpmn_file_path)
-    compliance_checking_logic = generate_compliance_checking_logic(constraint_folder_path)
-
-
-    # Write the Go code to the specified file
-    with open(output_go_file_path, 'w') as go_file:
-        go_file.write(control_flow_logic)
-
-    # Set permissions to read and write for everyone (666)
-    os.chmod(output_go_file_path, 0o666)
-
-
-    if isInSimulation=="true":
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents
-    else:
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents
-    # Execute the build and run commands
-    try:
-        print("Building and running the Process Vault...")
-        subprocess.run(
-            command,
-            shell=True,
-            check=True
-        )
-        print("Process Vault successfully built and run")
-    except subprocess.CalledProcessError as e:
-        print(e)
-
 #TODO: this is the right one
 # def generate_control_flow_logic(bpmn_file_path):
 #     petrinet, trans_names, silent_transition = parse_bpmn_to_petri(bpmn_file_path)
@@ -480,187 +437,32 @@ def generate_control_flow_logic(file_path):
         petrinet, trans_names, silent_transition = parse_bpmn_to_petri(file_path)
     elif file_path.endswith(".pnml"):
         petrinet, trans_names, silent_transition = parse_pnml_to_petri(file_path)
+        #find the index of the input place and the output place
+        #the input place is a place that in petrinet has no input transition
+        #the output place is a place that in petrinet has no output transition
+        input_place_index=-1
+        output_place_index=-1
+        for i, place in enumerate(petrinet.places):
+            print(place.in_arcs)
+            if len(place.in_arcs)==0:
+                input_place_index=i
+                place.name="source"
+            if len(place.out_arcs)==0:
+                output_place_index=i
+                place.name="sink"
+        if input_place_index==-1 or output_place_index==-1:
+            raise ValueError("The input and output place are not found")
+
     else:
         raise ValueError("Unsupported file type. Please use a .bpmn or .pnml file.")
-
+    print(petrinet)
     places = sorted(petrinet.places, key=lambda place: place.name)
     transitions = sorted(petrinet.transitions, key=lambda transition: trans_names[transition.name])
     silent_transition = sorted(silent_transition)
     input_matrix, output_matrix = generate_input_output_matrices(places, transitions, petrinet.arcs)
     go_code = generate_go_code_from_petri_net(places, transitions, input_matrix, output_matrix, trans_names, silent_transition)
     return go_code
-# def generate_compliance_checking_logic(contraints_file_path):
-#     #For each file in the folder of the constraints_file_path
-#     constaint_names=[]
-#     constraints=[]
-#     for file in sorted(os.listdir(contraints_file_path)):
-#         if file.endswith(".rego"):
-#             constaint_names.append(file.split(".")[0])
-#             #Read the file
-#             with open(contraints_file_path+"/"+file) as f:
-#                 data_list = f.readlines()
-#                 data_string = ''.join(data_list)
-#                 constraints.append(data_string)
-#
-#     return generate_gocode_compliance(constaint_names, constraints)
 
-
-# def generate_gocode_compliance(constaint_names, constraints):
-#     go_code = []
-#     # Define the net structure
-#     go_code.append("package complianceCheckingLogic\n")
-#     go_code.append("""
-#     import (
-# 	"context"
-# 	"fmt"
-# 	"github.com/open-policy-agent/opa/rego"
-# 	"sync"
-# 	"log")
-#     """)
-#     go_code.append("// Generated process constraints code\n")
-#     # Declare the places
-#     go_code.append("var constraintNames = []string{")
-#     go_code.append(", ".join([f"\"{constr_name}\"" for constr_name in constaint_names]) + ",")
-#     go_code.append("}\n")
-#     go_code.append("var constraints = []string{\n")
-#     for constr in constraints:
-#         # Wrap each constraint in backticks for Go raw string
-#         go_code.append(f"`{constr}`,\n")
-#     go_code.append("}\n")
-#     # Define the ComplianceCheckingLogic structure and InitComplianceCheckingLogic function
-#     go_code.append("""
-# // Enum for the state of the constraint
-# type ConstraintState int
-#
-# const (
-# 	Init     ConstraintState = 0
-# 	Pending  ConstraintState = 1
-# 	Violated ConstraintState = 2
-# )
-#
-# type Constraint struct {
-# 	name              string
-# 	preparedEvalQuery rego.PreparedEvalQuery
-# 	ConstraintState   map[string]ConstraintState // State for each case
-# }
-#
-# type ComplianceCheckingLogic struct {
-# 	preparedConstraints []Constraint
-# 	ctx                 context.Context
-# }
-#
-# // Function that creates a prepared constraint for each constraint
-# func InitComplianceCheckingLogic() (ComplianceCheckingLogic, []string) {
-# 	ctx := context.TODO()
-# 	ccLogic := ComplianceCheckingLogic{
-# 		preparedConstraints: []Constraint{},
-# 		ctx:                 ctx,
-# 	}
-# 	for i, constraint := range constraints {
-# 		query, err := rego.New(
-# 			rego.Query("data."+constraintNames[i]),
-# 			rego.Module(constraintNames[i], constraint),
-# 		).PrepareForEval(ctx)
-# 		if err != nil {
-# 			log.Fatal(err)
-# 		}
-# 		ccLogic.preparedConstraints = append(ccLogic.preparedConstraints, Constraint{
-# 			name:              constraintNames[i],
-# 			preparedEvalQuery: query,
-# 			ConstraintState:   make(map[string]ConstraintState),
-# 		})
-# 	}
-# 	return ccLogic, constraintNames
-# }
-#
-# // Evaluate the event log with the prepared constraints
-# func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interface{}) map[string]interface{} {
-# 	//Get the last event from the event log
-# 	lastEvent := eventLog["events"].([]map[string]interface{})[len(eventLog["events"].([]map[string]interface{}))-1]
-# 	//Get the trace_id of the last event
-# 	traceId := lastEvent["trace_concept_name"].(string)
-# 	//If the trace_id is not in the constraint state, add it
-# 	for _, constraint := range ccl.preparedConstraints {
-# 		if _, ok := constraint.ConstraintState[traceId]; !ok {
-# 			constraint.ConstraintState[traceId] = Init
-# 		}
-# 	}
-# 	violationMap := map[string]interface{}{}
-# 	var wg sync.WaitGroup
-# 	var mu sync.Mutex
-# 	for _, constraint := range ccl.preparedConstraints {
-# 		wg.Add(1)
-# 		go func(constraint Constraint) {
-# 			defer wg.Done()
-# 			res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
-# 			if err != nil {
-# 				fmt.Println(err)
-# 				return
-# 			}
-# 			mu.Lock()
-# 			defer mu.Unlock()
-# 			for constraintName := range constraint.preparedEvalQuery.Modules() {
-# 				resultValue := res[0].Expressions[0].Value
-# 				resultValueMap, ok := resultValue.(map[string]interface{})
-# 				if !ok {
-# 					fmt.Println(res)
-# 					log.Fatalf("Failed to convert result from policy inspection")
-# 				}
-# 				violations, ok := resultValueMap["violations"].(map[string]interface{})
-# 				if !ok {
-# 					fmt.Println(res)
-# 					log.Fatalf("Failed to convert violation from policy inspection")
-# 				}
-# 				pending, ok := resultValueMap["pending"].(map[string]interface{})
-# 				if !ok {
-# 					fmt.Println(res)
-# 					log.Fatalf("Failed to convert pending from policy inspection")
-# 				}
-# 				satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
-# 				if !ok {
-# 					fmt.Println(res)
-# 					log.Fatalf("Failed to convert satisfied from policy inspection")
-# 				}
-# 				violationMap[constraintName] = map[string]interface{}{
-# 					"violations": violations,
-# 					"pending":    pending,
-# 					"satisfied":  satisfied,
-# 				}
-# 				//serve una un set di caseId processati
-# 				caseSet := map[string]bool{}
-# 				for caseId := range pending {
-# 					if constraint.ConstraintState[caseId] == Init {
-# 						constraint.ConstraintState[caseId] = Pending
-# 						fmt.Println("Constraint" + constraintName + " pending for case " + caseId)
-# 					}
-# 				}
-# 				for caseId := range violations {
-# 					if constraint.ConstraintState[caseId] == Pending {
-# 						if !caseSet[caseId] {
-# 							constraint.ConstraintState[caseId] = Violated
-# 							caseSet[caseId] = true
-# 							fmt.Println("Constraint" + constraintName + " violated for case " + caseId)
-# 						}
-# 					}
-# 				}
-# 				for caseId := range satisfied {
-# 					if constraint.ConstraintState[caseId] == Pending {
-# 						if !caseSet[caseId] {
-# 							constraint.ConstraintState[caseId] = Init
-# 							caseSet[caseId] = true
-# 							fmt.Println("Constraint" + constraintName + " satisfied for case " + caseId)
-# 						}
-# 					}
-# 				}
-# 			}
-# 		}(constraint)
-# 	}
-# 	wg.Wait()
-# 	return violationMap
-# }
-#
-# """)
-#     return "\n".join(go_code)
 def parse_yaml_file(file_path):
     with open(file_path, 'r') as file:
         return yaml.safe_load(file)

@@ -416,51 +416,6 @@ def generate_input_output_matrices(places, transitions, arcs):
 
 
 
-
-
-def main():
-    if len(sys.argv) != 10:
-        print("Usage: python processvaultcompiler.py <bpmn_file_path> <output_go_file_path>")
-        sys.exit(1)
-
-    bpmn_file_path = sys.argv[1]
-    output_go_file_path = sys.argv[2]
-    constraint_folder_path=sys.argv[3]
-    output_go_file_path_compliance = sys.argv[4]
-    event_dispatcher_address= sys.argv[5]
-    extraction_manifest_file_path = sys.argv[6]
-    isInSimulation = sys.argv[7]
-    isInTesting = sys.argv[8]
-    nEvents = sys.argv[9]
-
-    control_flow_logic = generate_control_flow_logic(bpmn_file_path)
-    compliance_checking_logic = generate_compliance_checking_logic(constraint_folder_path)
-
-
-    # Write the Go code to the specified file
-    with open(output_go_file_path, 'w') as go_file:
-        go_file.write(control_flow_logic)
-
-    # Set permissions to read and write for everyone (666)
-    os.chmod(output_go_file_path, 0o666)
-
-
-    if isInSimulation=="true":
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents
-    else:
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents
-    # Execute the build and run commands
-    try:
-        print("Building and running the Process Vault...")
-        subprocess.run(
-            command,
-            shell=True,
-            check=True
-        )
-        print("Process Vault successfully built and run")
-    except subprocess.CalledProcessError as e:
-        print(e)
-
 #TODO: this is the right one
 # def generate_control_flow_logic(bpmn_file_path):
 #     petrinet, trans_names, silent_transition = parse_bpmn_to_petri(bpmn_file_path)
