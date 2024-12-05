@@ -76,6 +76,7 @@ type ProcessStateManager struct {
 	mean                    float64
 	m2                      float64
 	stopEventNumebr         int
+	TotalCounter            int
 }
 
 // Init a new ProcessStateManager
@@ -90,6 +91,7 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		minDuration:             math.MaxFloat64,
 		runStarted:              time.Now(),
 		stopEventNumebr:         stopEventNumber,
+		TotalCounter:            0,
 	}
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
@@ -137,7 +139,8 @@ func (psm *ProcessStateManager) initNewCase(caseId string) {
 func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, timestamp string, data map[string]interface{}) {
 	//Check if the event exists in the workflow logic
 	firtsTs := time.Now()
-	fmt.Println("event number: ", len(psm.ProcessState.EventLog))
+	psm.TotalCounter += 1
+	fmt.Println("total event number: ", psm.TotalCounter)
 	//TODO: this should be moved into the event dispatcher
 	if psm.WorkflowLogic.GetTransitionIndexByName(eventId) == -1 {
 		fmt.Println("Unknown event")
@@ -270,7 +273,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	stdDev := math.Sqrt(variance)
 	fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
 	fmt.Println(psm.ProcessState.Counter, psm.stopEventNumebr)
-	if psm.ProcessState.Counter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
+	if psm.TotalCounter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
 		recordDataDuration(durationFromStart, psm, stdDev)
 	}
 }

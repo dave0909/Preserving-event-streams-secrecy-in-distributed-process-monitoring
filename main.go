@@ -154,8 +154,8 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 	defer ticker.Stop()
 
 	for {
-		fmt.Println(psm.ProcessState.Counter, nEvents)
-		if psm.ProcessState.Counter == nEvents {
+		fmt.Println(psm.TotalCounter, nEvents)
+		if psm.TotalCounter == nEvents {
 			break
 		}
 		select {
