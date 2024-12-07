@@ -114,7 +114,7 @@ func (psa *ProcessStateAgent) broadcastEvent(eventString string) {
 		if err != nil {
 			log.Fatalf("Error encrypting event: %v", err)
 		}
-		go psa.sendEvent(encryptedEvent, *sub.ClientConnection)
+		psa.sendEvent(encryptedEvent, *sub.ClientConnection)
 	}
 }
 

@@ -214,7 +214,6 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	}
 	//elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
 	elaboratedLog["events"] = append(elaboratedLog["events"], eventLogEntry)
-	fmt.Println(elaboratedLog)
 	psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	//for constraint, result := range violationMap {

@@ -14,7 +14,7 @@ df = pd.read_csv('../data/testResults/memory_usage.csv', decimal='.', header=0)
 # SECONDS
 df['Timestamp'] = df['Timestamp'].apply(lambda x: datetime.utcfromtimestamp(x/1000))
 #Right know timestamps are taken every 50ms. consider points with timestamp every 200ms
-#df = df.iloc[::7000, :]
+df = df.iloc[::500, :]
 
 # Calculate first boot timestamp
 start_time = df['Timestamp'].min()
@@ -61,7 +61,7 @@ plt.style.use("seaborn-v0_8-bright")
 plt.figure(figsize=(16,9))
 
 #plt.plot(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'purple',linewidth=4, marker='.')
-plt.plot(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'steelblue',linewidth=1, marker='')
+plt.plot(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'steelblue',linewidth=2, marker='')
 # plt.plot(result_2['Durata Normalizzata'],result_2['Memory usage (MB)'].fillna(0), color = 'purple',linewidth=3, marker='.')
 
 
@@ -72,7 +72,7 @@ plt.xlabel('Run completion percentage', fontsize = 30, labelpad= 15)
 plt.ylabel('Memory usage (MB)', fontsize = 30,  labelpad= 15)
 plt.grid(True, linestyle='--')
 plt.xlim([0, 101])
-plt.ylim(0, 20)
+plt.ylim(0, 400)
 plt.tight_layout()
 #plt.legend(['Memory usage trend', 'First attestation', 'First segment recieved', 'First computation'], loc='upper left', fontsize=25, framealpha=1)
 # plt.legend(['Memory usage trend', 'First segment recieved', 'First computation', 'First attestation'], loc='upper right', fontsize=18, framealpha=1, edgecolor="black", fancybox=False)
