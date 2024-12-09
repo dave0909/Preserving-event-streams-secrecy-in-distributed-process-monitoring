@@ -792,10 +792,10 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 	traceId := lastEvent["trace_concept_name"].(string)
 	for _, constraint := range ccl.preparedConstraints {
 		if _, ok := constraint.ConstraintState[traceId]; !ok {
-			constraint.ConstraintState[traceId] = Init // Init state
+			constraint.ConstraintState[traceId] = Init //Init state
 		}
 	}
-	violationMap := map[string]interface{}{}
+	resultMap := map[string]interface{}{}
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	for _, constraint := range ccl.preparedConstraints {
@@ -837,13 +837,14 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 1) {
 						constraint.ConstraintState[caseId] = Pending
 						fmt.Println("Constraint ", constraintName, "in pending state for case ", caseId)
-
+						resultMap[traceId] = Pending
 					}
 				}
 				for caseId := range temporarySatisfied {
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 4) {
 						constraint.ConstraintState[caseId] = TemporarySatisfied
 						fmt.Println("Constraint ", constraintName, "in temporary satisfied state for case ", caseId)
+						resultMap[traceId] = TemporarySatisfied
 
 					}
 				}
@@ -851,34 +852,28 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 5) {
 						constraint.ConstraintState[caseId] = TemporaryViolated
 						fmt.Println("Constraint ", constraintName, "in temporary violated state for case ", caseId)
-
+						resultMap[traceId] = TemporaryViolated
 					}
 				}
 				for caseId := range violations {
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 2) {
 						constraint.ConstraintState[caseId] = Violated
 						fmt.Println("Constraint ", constraintName, "in violated state for case ", caseId)
-
+						resultMap[traceId] = Violated
 					}
 				}
 				for caseId := range satisfied {
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 3) {
 						constraint.ConstraintState[caseId] = Satisfied
 						fmt.Println("Constraint ", constraintName, "in satisfied state for case ", caseId)
+						resultMap[traceId] = Satisfied
 					}
-				}
-				violationMap[constraintName] = map[string]interface{}{
-					"violations":          resultValueMap["violations"],
-					"pending":             resultValueMap["pending"],
-					"satisfied":           resultValueMap["satisfied"],
-					"temporary_satisfied": resultValueMap["temporary_satisfied"],
-					"temporary_violated":  resultValueMap["temporary_violated"],
 				}
 			}
 		}(constraint)
 	}
 	wg.Wait()
-	return violationMap
+	return resultMap
 }
 """)
     go_code.append(generate_get_fsm_function(constraint_folder_path, constraint_names))
@@ -979,8 +974,10 @@ def main():
     #Set permissions to read and write for everyone (666)
     os.chmod(output_go_file_path, 0o666)
     if isInSimulation=="true":
+        print("Building and running the Process Vault in simulation mode...")
         command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents
     else:
+        print("Building and running the Process Vault in non-simulation mode...")
         command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents
         # Execute the build and run commands
     try:

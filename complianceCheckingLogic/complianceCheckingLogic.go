@@ -26,217 +26,279 @@ type CustomFSM struct {
 // Generated process constraints code
 
 var constraintNames = []string{
-"appeal_notcollect", "balance_notcollect", "case_start", "delay_no_collect", "dismissal_notinsert", "insert_and_notify_notcollect", "no_insert_no_collect", "two_create_send_notinsertfine"}
+"inspect_goods_within_onehour", "separation_of_duty", "shipment_cost", "truck_policy"}
 
 var constraints = []string{
 
-`package appeal_notcollect
-
-import rego.v1
-
-
-# Get the most recent event
-most_recent_event := input.events[count(input.events) - 1]
-
-
-#Temporary satisfied if the last event is the last event is "Appeal to Judge"
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Appeal to Judge"
-}
-
-#Temporary satisfied if the last event is or "Send Appeal to Prefecture"
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Send Appeal to Prefecture"
-}
-
-#Violated if "Send for Credit Collection" activity exists in the trace
-violated[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    some e1; e1 = input.events[_]; e1.trace_concept_name == trace_id; e1.concept_name == "Send for Credit Collection"
-}
-`,
-
-`package balance_notcollect
-
+`package inspect_goods_within_onehour
 import rego.v1
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-#Satisfied if the sum af the paymentAmount attribute of all the "Payment" activities is greater than 10
-satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    sum([e.paymentAmount | e := input.events; e.concept_name == "Payment"]) > 10
-}
-
-#Temporary satisfied if the sum af the paymentAmount attribute of all the "Payment" activities is less or equal than 10
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    sum([e.paymentAmount | e := input.events; e.concept_name == "Payment"]) <= 10
-}
-
-#Violated if the "Send for Credit Collection" activity exists in the trace
+## Define a rule to check if the most recent event is "IV Antibiotics"
+#reached_present[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"}) > 0
+#}
+#
+## Pending condition
+#pending[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Truck reached costumer (TRC)"
+#}
+#
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Inspect goods (IG)"
+#    not inspect_goods_within_one_hour[trace_id]
+#}
+#
+## Violation condition, when the trace is over and the constraint is in pending state
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Order reception confirmed (ORC)"
+#}
+#
+## Satisfied condition, when I receive an inspect goods activity and the constraint is in pending state
+#satisfied[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Inspect goods (IG)"
+#    inspect_goods_within_one_hour[trace_id]
+#}
+#
+## Define a rule to check if "Inspect goods (IG)" happens within one hour after the latest "Truck reached costumer (TRC)"
+#inspect_goods_within_one_hour[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    reached_present[trace_id]
+#    last_inspect := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Inspect goods (IG)"])
+#    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)";time.parse_rfc3339_ns(e.timestamp) < last_inspect]
+#    reached := min(reached_events) # This will be 0 if reached_events is empty
+#    inspect := most_recent_event
+#    time.parse_rfc3339_ns(inspect.timestamp) <= reached + 3600000000000
+#}
+#temporary satisfied condition if the last event is Truck reached costumer (TRC)
 temporary_violated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    some e1; e1 = input.events[_]; e1.trace_concept_name == trace_id; e1.concept_name == "Send for Credit Collection"
-}`,
-
-`package case_start
-
-import rego.v1
-
-# Get the most recent event
-most_recent_event := input.events[count(input.events) - 1]
-#Init a Timestamp variable of the first event in the log is 2000-01-01 00:00:00+00:00
-first_event_timestamp := time.parse_rfc3339_ns("2000-01-01T00:00:00Z")
-
+    most_recent_event.concept_name == "Truck reached costumer (TRC)"
+}
+#temporary satisfied condition if the last event is "Inspect goods (IG)" and the difference with the older Truck reached costumer (TRC) is less than one hour
 temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name != "Send for Credit Collection"
-    #The timestamp of the event is after 4481 days from the first event
-    (time.parse_rfc3339_ns(most_recent_event.timestamp) / 1000000000) - (first_event_timestamp / 1000000000) >= 4481 * 24 * 60 * 60
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    #Get the older Truck reached costumer (TRC) event
+    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"]
+    reached := min(reached_events) # This will be 0 if reached_events is empty
+    #check if the fime difference is less than one hour
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - reached <= 3600000000000
 }
-
-#Check among the pasts events if there is a "Send for Credit Collection" event
-violated[trace_id] if {
+#Violation condition if the last event is "Inspect goods (IG)" and the difference with the older Truck reached costumer (TRC) is more than one hour
+violations[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    some e1; e1 = input.events[_]; e1.trace_concept_name == trace_id; e1.concept_name == "Send for Credit Collection"
-}
-
-satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    #The timestamp of the event is after 4481 days from the first event
-    (time.parse_rfc3339_ns(most_recent_event.timestamp) / 1000000000) - (first_event_timestamp / 1000000000) < 4481 * 24 * 60 * 60
-}
-`,
-
-`package delay_no_collect
-import rego.v1
-
-# Get the most recent event
-most_recent_event := input.events[count(input.events) - 1]
-
-satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    some e1; e1 = input.events[_]; e1.trace_concept_name == trace_id; e1.concept_name == "Add penalty"
-    some e2; e2 = input.events[_]; e2.trace_concept_name == trace_id; e2.concept_name == "Payment"
-    (time.parse_rfc3339_ns(e2.timestamp) / 1000000000) - (time.parse_rfc3339_ns(e1.timestamp) / 1000000000) > 3 * 24 * 60 * 60
-}
-
-# Violated if the last event is "Send for Credit Collection"
-violated[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Send for Credit Collection"
-}
-
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    some e3; e3 = input.events[_]; e3.trace_concept_name == trace_id; e3.concept_name == "Add penalty"
-    some e4; e4 = input.events[_]; e4.trace_concept_name == trace_id; e4.concept_name == "Payment"
-    (time.parse_rfc3339_ns(e4.timestamp) / 1000000000) - (time.parse_rfc3339_ns(e3.timestamp) / 1000000000) <= 3 * 24 * 60 * 60
-}
-
-temporary_violated[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name != "Send for Credit Collection"
-}`,
-
-`package dismissal_notinsert
-
-import rego.v1
-
-# Get the most recent event
-most_recent_event := input.events[count(input.events) - 1]
-
-#Define a set of strings that represent the events that are considered as "Dismissal"
-dismissal_events := {"2", "3", "5", "A", "B", "E", "F", "I", "J", "K", "M", "N", "Q", "R", "T", "U", "V"}
-
-#Temporary satisfied if the last event is the last event is "Create Fine" and the "dismissal" attribute is in the dismissal_events set
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Create Fine"
-    most_recent_event.dismissal in dismissal_events
-}
-
-#Violated if the "Insert Fine" activity exists in the trace
-violated[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    some e1; e1 = input.events[_]; e1.trace_concept_name == trace_id; e1.concept_name == "Insert Fine Notification"
-}`,
-
-`package insert_and_notify_notcollect
-import rego.v1
-
-# Get the most recent event
-most_recent_event := input.events[count(input.events) - 1]
-
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name != "Insert Date Appeal to Prefecture"
-}
-
-temporary_violated[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    #Send for Credit Collection extists in the trace
-    some e1; e1 = input.events[_]; e1.trace_concept_name == trace_id; e1.concept_name == "Send for Credit Collection"
-}
-
-satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Notify Result Appeal to Offender"
-}`,
-
-`package no_insert_no_collect
-import rego.v1
-
-# Get the most recent event
-most_recent_event := input.events[count(input.events) - 1]
-
-satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Insert Fine Notification"
-}
-
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name != "Insert Fine Notification"
-    most_recent_event.concept_name != "Send for Credit Collection"
-}
-temporary_violated[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Send for Credit Collection"
+    most_recent_event.concept_name == "Inspect goods (IG)"
+    #Get the older Truck reached costumer (TRC) event
+    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"]
+    reached := min(reached_events) # This will be 0 if reached_events is empty
+    #check if the fime difference is less than one hour
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - reached > 3600000000000
 }
 
 
 `,
 
-`package two_create_send_notinsertfine
+`package separation_of_duty
 import rego.v1
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-# Temporary satisfied if 1) Create Fine is in the past events 2) Send Fine is in the past events 3) There are only two events in the trace_id
+# Pending condition 1
 temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    some e1; e1 = input.events[_]; e1.trace_concept_name == trace_id; e1.concept_name == "Create Fine"
-    some e2; e2 = input.events[_]; e2.trace_concept_name == trace_id; e2.concept_name == "Send Fine"
-    count([e | e := input.events; e.trace_concept_name == trace_id]) == 2
+    most_recent_event.concept_name == "Fill in container (FC)"
 }
-
-# Violated if the "Insert Fine" is the last event of the trace
-violated[trace_id] if {
+# Pending condition 1
+temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Insert Fine Notification"
+    most_recent_event.concept_name == "Fill in container (FC)"
 }
 
-# Satisfied if the last event is not "Insert Fine Notification"
+# Violation condition 1
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
+    same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+}
+
+# Violation condition 2
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Check container (CC)"
+    same_operator_exists(trace_id, "Check container (CC)", "Fill in container (FC)")
+}
+
+# Satisfied condition, when the trace is over and the constraint is in pending state
 satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name != "Insert Fine Notification"
+    most_recent_event.concept_name == "EOT_EVENT"
+}
+
+# Define a rule to check if the same logistics operator exists for both activities in the same trace
+same_operator_exists(trace_id, activity1, activity2) if {
+    e1 := input.events[_]
+    e1.trace_concept_name == trace_id
+    e1.concept_name == activity1
+    e2 := input.events[_]
+    e2.trace_concept_name == trace_id
+    e2.concept_name == activity2
+    e1.logistics_operator == e2.logistics_operator
 }`,
+
+`package shipment_cost
+import rego.v1
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+## Pending condition
+#pending[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Reserve shipment (RS)"
+#}
+#
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Drive to manufacturer (DM)"
+#    not check_cost_condition[trace_id]
+#}
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Drive to costumer (DC)"
+#    not check_cost_condition[trace_id]
+#}
+#
+## Satisfied condition
+#satisfied[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#	most_recent_event.concept_name == "Order reception confirmed (ORC)"
+#	#This below is not needed, if you are in pending state, the check cost condition is always true if you are in pending state
+#    check_cost_condition[trace_id]
+#}
+
+#Temporary satisfied condition if the last event is "Reserve shipment (RS)" and the cost condition is satisfied
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Reserve shipment (RS)"
+    check_cost_condition(trace_id)
+}
+
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Drive to costumer (DC)"
+    check_cost_condition(trace_id)
+}
+
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Drive to manufacturer (DM)"
+    check_cost_condition(trace_id)
+}
+
+temporary_violated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Reserve shipment (RS)"
+    not check_cost_condition(trace_id)
+}
+
+## Define a rule to check the cost condition
+#check_cost_condition[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    reserve_cost := sum([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
+#    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
+#    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
+#    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
+#}
+
+# Define a function to check the cost condition
+check_cost_condition(trace_id) if {
+    reserve_cost := max([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
+    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
+    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
+    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
+}
+
+`,
+
+`package truck_policy
+import rego.v1
+
+# Define the constant for five years in seconds
+five_years_in_seconds := 5 * 365 * 24 * 60 * 60
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+# Temporary satisfied condition if the last event is not "Select truck (ST)"
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    1==1
+}
+
+# Violation condition
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Select truck (ST)"
+    driver_experience_within_five_years[trace_id]
+}
+
+# Satisfied condition
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "EOT_EVENT"
+}
+
+# Define a rule to check if the driver's experience is within five years
+driver_experience_within_five_years[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    event := most_recent_event
+    (time.parse_rfc3339_ns(event.timestamp) / 1000000000) - (time.parse_rfc3339_ns(event.license_first_issue) / 1000000000) <= five_years_in_seconds
+}
+
+
+#
+## Pending condition
+#pending[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Select truck (ST)"
+#}
+#
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    #Not needed
+#    #most_recent_event.concept_name == "Select truck (ST)"
+#    driver_experience_within_five_years[trace_id]
+#}
+#
+## Satisfied condition
+#satisfied[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    #Not needed
+#    #most_recent_event.concept_name == "Select truck (ST)"
+#    not driver_experience_within_five_years[trace_id]
+#}
+#
+## Define a rule to check if the driver's experience is within five years
+driver_experience_within_five_years[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    event := most_recent_event
+    (time.parse_rfc3339_ns(event.timestamp) / 1000000000) - (time.parse_rfc3339_ns(event.license_first_issue) / 1000000000) <= five_years_in_seconds
+}
+
+#Temporary satisfied condition if the last event is not "Select truck (ST)"`,
 
 }
 
@@ -299,10 +361,10 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 	traceId := lastEvent["trace_concept_name"].(string)
 	for _, constraint := range ccl.preparedConstraints {
 		if _, ok := constraint.ConstraintState[traceId]; !ok {
-			constraint.ConstraintState[traceId] = Init // Init state
+			constraint.ConstraintState[traceId] = Init //Init state
 		}
 	}
-	violationMap := map[string]interface{}{}
+	resultMap := map[string]interface{}{}
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	for _, constraint := range ccl.preparedConstraints {
@@ -344,13 +406,14 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 1) {
 						constraint.ConstraintState[caseId] = Pending
 						fmt.Println("Constraint ", constraintName, "in pending state for case ", caseId)
-
+						resultMap[traceId] = Pending
 					}
 				}
 				for caseId := range temporarySatisfied {
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 4) {
 						constraint.ConstraintState[caseId] = TemporarySatisfied
 						fmt.Println("Constraint ", constraintName, "in temporary satisfied state for case ", caseId)
+						resultMap[traceId] = TemporarySatisfied
 
 					}
 				}
@@ -358,119 +421,69 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 5) {
 						constraint.ConstraintState[caseId] = TemporaryViolated
 						fmt.Println("Constraint ", constraintName, "in temporary violated state for case ", caseId)
-
+						resultMap[traceId] = TemporaryViolated
 					}
 				}
 				for caseId := range violations {
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 2) {
 						constraint.ConstraintState[caseId] = Violated
 						fmt.Println("Constraint ", constraintName, "in violated state for case ", caseId)
-
+						resultMap[traceId] = Violated
 					}
 				}
 				for caseId := range satisfied {
 					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 3) {
 						constraint.ConstraintState[caseId] = Satisfied
 						fmt.Println("Constraint ", constraintName, "in satisfied state for case ", caseId)
+						resultMap[traceId] = Satisfied
 					}
-				}
-				violationMap[constraintName] = map[string]interface{}{
-					"violations":          resultValueMap["violations"],
-					"pending":             resultValueMap["pending"],
-					"satisfied":           resultValueMap["satisfied"],
-					"temporary_satisfied": resultValueMap["temporary_satisfied"],
-					"temporary_violated":  resultValueMap["temporary_violated"],
 				}
 			}
 		}(constraint)
 	}
 	wg.Wait()
-	return violationMap
+	return resultMap
 }
 
 
 var fsmMap = map[string]*CustomFSM{
 
-"appeal_notcollect": {
+"inspect_goods_within_onehour": {
+    Transitions: [][]int{
+        {5},
+        {},
+        {},
+        {},
+        {2},
+        {2, 4},
+    },
+},
+
+"separation_of_duty": {
     Transitions: [][]int{
         {4},
         {},
         {},
         {},
-        {2},
+        {2, 3},
         {},
     },
 },
 
-"balance_notcollect": {
+"shipment_cost": {
     Transitions: [][]int{
-        {4, 3},
+        {4, 5},
         {},
         {},
         {},
-        {5, 3},
-        {3},
-    },
-},
-
-"case_start": {
-    Transitions: [][]int{
-        {4, 3},
-        {},
-        {},
-        {},
-        {2},
-        {},
-    },
-},
-
-"delay_no_collect": {
-    Transitions: [][]int{
-        {5, 4, 3},
-        {},
-        {},
-        {},
-        {2},
-        {4, 3},
-    },
-},
-
-"dismissal_notinsert": {
-    Transitions: [][]int{
+        {5},
         {4},
-        {},
-        {},
-        {},
-        {2},
-        {},
     },
 },
 
-"insert_and_notify_notcollect": {
+"truck_policy": {
     Transitions: [][]int{
-        {4, 3},
-        {},
-        {},
-        {},
-        {3, 5},
-        {3},
-    },
-},
-
-"no_insert_no_collect": {
-    Transitions: [][]int{
-        {3, 5, 4},
-        {},
-        {},
-        {},
-        {3, 5},
-        {3},
-    },
-},
-
-"two_create_send_notinsertfine": {
-    Transitions: [][]int{
-        {4},
+        {4, 2, 3},
         {},
         {},
         {},

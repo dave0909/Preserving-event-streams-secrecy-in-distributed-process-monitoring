@@ -5,7 +5,12 @@ import rego.v1
 most_recent_event := input.events[count(input.events) - 1]
 
 # Pending condition 1
-pending[trace_id] if {
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
+}
+# Pending condition 1
+temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
     most_recent_event.concept_name == "Fill in container (FC)"
 }
@@ -27,9 +32,7 @@ violations[trace_id] if {
 # Satisfied condition, when the trace is over and the constraint is in pending state
 satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Order reception confirmed (ORC)"
-    #This below is not needed
-    #not same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+    most_recent_event.concept_name == "EOT_EVENT"
 }
 
 # Define a rule to check if the same logistics operator exists for both activities in the same trace

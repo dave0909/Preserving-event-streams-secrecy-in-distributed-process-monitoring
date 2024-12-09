@@ -214,37 +214,10 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	}
 	//elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
 	elaboratedLog["events"] = append(elaboratedLog["events"], eventLogEntry)
-	psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
-	//violationMap := psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
-	//for constraint, result := range violationMap {
-	//	castedResult := result.(map[string]interface{})
-	//	for caseId, _ := range castedResult {
-	//		if _, ok := psm.ProcessState.ComplianceCheckingViolations[caseId]; !ok {
-	//			psm.ProcessState.ComplianceCheckingViolations[caseId] = []ComplianceCheckingViolation{}
-	//		}
-	//		//Chek if the case has already a violation for the given constraint
-	//		violated := false
-	//		for _, violation := range psm.ProcessState.ComplianceCheckingViolations[caseId] {
-	//			if violation.ViolatedConstraint == constraint {
-	//				violated = true
-	//				break
-	//			}
-	//		}
-	//		if !violated {
-	//			//If the case has not a violation for the given constraint, add it
-	//			psm.ProcessState.ComplianceCheckingViolations[caseId] = append(psm.ProcessState.ComplianceCheckingViolations[caseId], ComplianceCheckingViolation{
-	//				ViolatedConstraint: constraint,
-	//				InvolvedCase:       caseId,
-	//				Timestamp:          timestamp,
-	//			})
-	//			fmt.Println("New compliance violation for case: ", caseId, " constraint: ", constraint)
-	//		}
-	//	}
-	//}
+	_ = psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
 	if addEventFlag {
 		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	}
-	//fmt.Println("Time for compliance checking: ", time.Since(firtsTs).Seconds())
 	//Clear old events
 	if len(psm.ProcessState.EventLog) == 150 {
 		//clear the events log by removing the first 100 events
@@ -260,13 +233,11 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	if duration > psm.maxDuration {
 		psm.maxDuration = duration
 	}
-
 	// Incremental calculation of mean and variance
 	delta := duration - psm.mean
 	psm.mean += delta / float64(psm.ProcessState.Counter)
 	delta2 := duration - psm.mean
 	psm.m2 += delta * delta2
-
 	// Calculate standard deviation
 	variance := psm.m2 / float64(psm.ProcessState.Counter)
 	stdDev := math.Sqrt(variance)

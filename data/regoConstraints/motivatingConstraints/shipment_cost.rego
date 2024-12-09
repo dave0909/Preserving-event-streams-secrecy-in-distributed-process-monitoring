@@ -4,38 +4,72 @@ import rego.v1
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-# Pending condition
-pending[trace_id] if {
+## Pending condition
+#pending[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Reserve shipment (RS)"
+#}
+#
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Drive to manufacturer (DM)"
+#    not check_cost_condition[trace_id]
+#}
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Drive to costumer (DC)"
+#    not check_cost_condition[trace_id]
+#}
+#
+## Satisfied condition
+#satisfied[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#	most_recent_event.concept_name == "Order reception confirmed (ORC)"
+#	#This below is not needed, if you are in pending state, the check cost condition is always true if you are in pending state
+#    check_cost_condition[trace_id]
+#}
+
+#Temporary satisfied condition if the last event is "Reserve shipment (RS)" and the cost condition is satisfied
+temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
     most_recent_event.concept_name == "Reserve shipment (RS)"
+    check_cost_condition(trace_id)
 }
 
-# Violation condition
-violations[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Drive to manufacturer (DM)"
-    not check_cost_condition[trace_id]
-}
-# Violation condition
-violations[trace_id] if {
+temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
     most_recent_event.concept_name == "Drive to costumer (DC)"
-    not check_cost_condition[trace_id]
+    check_cost_condition(trace_id)
 }
 
-# Satisfied condition
-satisfied[trace_id] if {
+temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-	most_recent_event.concept_name == "Order reception confirmed (ORC)"
-	#This below is not needed, if you are in pending state, the check cost condition is always true if you are in pending state
-    check_cost_condition[trace_id]
+    most_recent_event.concept_name == "Drive to manufacturer (DM)"
+    check_cost_condition(trace_id)
 }
 
-# Define a rule to check the cost condition
-check_cost_condition[trace_id] if {
+temporary_violated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    reserve_cost := sum([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
+    most_recent_event.concept_name == "Reserve shipment (RS)"
+    not check_cost_condition(trace_id)
+}
+
+## Define a rule to check the cost condition
+#check_cost_condition[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    reserve_cost := sum([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
+#    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
+#    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
+#    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
+#}
+
+# Define a function to check the cost condition
+check_cost_condition(trace_id) if {
+    reserve_cost := max([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
     drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
     drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
     reserve_cost <= (drive_distance_i + drive_distance_m) * 3
 }
+
