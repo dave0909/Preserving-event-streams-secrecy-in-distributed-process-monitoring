@@ -4,7 +4,7 @@
   "case_id": "concept:name",
   "attribute_extraction": {
     "Select truck (ST)": ["license_firt_issue"],
-    "Reserve shipment (RS)": ["cost"],
+    "Shipment reservation sent (SRS)": ["cost"],
     "Fill in container (FC)": ["logistics_operator"],
     "Check container (CC)": ["logistics_operator"],
     "Drive to manufacturer (DM)": ["km_distance"],

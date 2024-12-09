@@ -66,8 +66,8 @@ def handle_event_data(host, port, number_of_complete_cases):
             event_log.append(trace)
 
     # Write the event log to a new XES file
-    xes_exporter.apply(event_log, "../data/xes/motivating.xes")
-    print("Event log written to motivating.xes")
+    xes_exporter.apply(event_log, "../data/xes/newmotivating.xes")
+    print("Event log written to oldmotivating.xes")
     print("Number of cases: ", len(event_log))
     print ("Number of events: ", event_counter)
 

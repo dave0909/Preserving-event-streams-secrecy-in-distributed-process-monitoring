@@ -1,0 +1,19 @@
+initial_state: Init
+states:
+  - Init
+  - TemporarySatisfied
+  - TemporaryViolated
+  - Violated
+transitions:
+  - from: Init # Init to TemporaryViolated
+    to: TemporaryViolated
+    event: TemporaryViolated
+  - from: TemporaryViolated # TemporaryViolated to Violated
+    to: Violated
+    event: Violated
+  - from: TemporarySatisfied # TemporarySatisfied to Violated
+    to: Violated
+    event: Violated
+  - from: TemporaryViolated # TemporaryViolated to Satisfied
+    to: TemporarySatisfied
+    event: TemporarySatisfied

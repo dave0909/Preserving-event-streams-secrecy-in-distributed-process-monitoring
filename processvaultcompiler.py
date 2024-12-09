@@ -654,15 +654,15 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string]interfa
 
 
 """
-python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true
+python3 processvaultcompiler.py ./data/BPMN/newmotivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true
 python3 processvaultcompiler.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_sepsis.json true true
 RUN IN NON SIMULATION MODE
-python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 10
+python3 processvaultcompiler.py ./data/BPMN/newmotivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 10
 
 RUN SEPSIS TEST IN NON SIMULATION
 python3 processvaultcompiler.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_sepsis.json false true 15200
 UN MOTIVATING TEST IN NON SIMULATION
-python3 processvaultcompiler.py ./data/BPMN/motivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 35999
+python3 processvaultcompiler.py ./data/BPMN/newmotivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 35999
 
 """
 

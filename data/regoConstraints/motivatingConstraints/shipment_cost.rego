@@ -34,7 +34,7 @@ most_recent_event := input.events[count(input.events) - 1]
 #Temporary satisfied condition if the last event is "Reserve shipment (RS)" and the cost condition is satisfied
 temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Reserve shipment (RS)"
+    most_recent_event.concept_name == "Shipment reservation sent (SRS)"
     check_cost_condition(trace_id)
 }
 

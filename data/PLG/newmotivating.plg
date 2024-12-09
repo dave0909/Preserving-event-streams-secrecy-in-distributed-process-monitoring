@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- 
+
+WARNING: Do not manually edit this file, unless you know what you are doing!
+
+This file has been generated with libPlg v.2.0.5.
+Check https://github.com/delas/plg for sources and other stuff.
+
+ -->
+<process>
+	<!-- This is the list of all meta-attributes of the process -->
+	<meta>
+		<LibPLG_NAME>libPlg</LibPLG_NAME>
+		<libPLG_VERSION>2.0.5</libPLG_VERSION>
+		<name>Process_0j3pne0</name>
+		<id>ncvn31bnes17j373e0b14olqfo</id>
+	</meta>
+	<!-- This is the list of all actual process elements -->
+	<elements>
+		<startEvent id="1035"/>
+		<task id="1037" name="Retrieve goods from the stock (RGFS)">
+			<dataObject id="1094" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="1038" name="Select truck (ST)">
+			<dataObject id="1093" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="1039" name="Fill in container (FC)">
+			<dataObject id="1211" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="1040" name="Drive to manufacturer (DM)">
+			<dataObject id="1213" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="1041" name="Drive to costumer (DC)">
+			<dataObject id="1215" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="1042" name="Inspect goods (IG)">
+			<script/>
+		</task>
+		<task id="1043" name="Purchase order generated (POC)">
+			<script/>
+		</task>
+		<task id="1044" name="Purchase order received (POR)">
+			<script/>
+		</task>
+		<task id="1045" name="Shipment reservation received (SRR)">
+			<script/>
+		</task>
+		<task id="1046" name="Truck reached manufacturer (TRM)">
+			<script/>
+		</task>
+		<task id="1047" name="Check container (CC)">
+			<dataObject id="1212" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="1048" name="Verify attachment (VA)">
+			<script/>
+		</task>
+		<task id="1049" name="Attach container to the truck (ACT)">
+			<script/>
+		</task>
+		<task id="1050" name="Truck reached costumer (TRC)">
+			<script/>
+		</task>
+		<task id="1051" name="Detach container (DCO)">
+			<script/>
+		</task>
+		<task id="1052" name="Confirm order reception (CIR)">
+			<script/>
+		</task>
+		<task id="1053" name="Order reception confirmed (ORC)">
+			<script/>
+		</task>
+		<task id="1054" name="Shipment reservation sent (SRS)">
+			<dataObject id="1092" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="1055" name="Restock goods (RG)">
+			<script/>
+		</task>
+		<gateway id="1056" type="ExclusiveGateway"/>
+		<gateway id="1057" type="ExclusiveGateway"/>
+		<gateway id="1058" type="ExclusiveGateway"/>
+		<gateway id="1059" type="ExclusiveGateway"/>
+		<gateway id="1060" type="ParallelGateway"/>
+		<gateway id="1061" type="ParallelGateway"/>
+		<endEvent id="1036"/>
+		<sequenceFlow id="1088" sourceRef="1058" targetRef="1059"/>
+		<sequenceFlow id="1089" sourceRef="1058" targetRef="1055"/>
+		<sequenceFlow id="1090" sourceRef="1055" targetRef="1059"/>
+		<sequenceFlow id="1091" sourceRef="1059" targetRef="1039"/>
+		<sequenceFlow id="1062" sourceRef="1035" targetRef="1043"/>
+		<sequenceFlow id="1063" sourceRef="1043" targetRef="1044"/>
+		<sequenceFlow id="1064" sourceRef="1045" targetRef="1038"/>
+		<sequenceFlow id="1065" sourceRef="1039" targetRef="1047"/>
+		<sequenceFlow id="1066" sourceRef="1046" targetRef="1060"/>
+		<sequenceFlow id="1067" sourceRef="1047" targetRef="1060"/>
+		<sequenceFlow id="1068" sourceRef="1060" targetRef="1049"/>
+		<sequenceFlow id="1069" sourceRef="1049" targetRef="1048"/>
+		<sequenceFlow id="1070" sourceRef="1048" targetRef="1041"/>
+		<sequenceFlow id="1071" sourceRef="1050" targetRef="1051"/>
+		<sequenceFlow id="1072" sourceRef="1051" targetRef="1042"/>
+		<sequenceFlow id="1073" sourceRef="1042" targetRef="1052"/>
+		<sequenceFlow id="1074" sourceRef="1053" targetRef="1036"/>
+		<sequenceFlow id="1075" sourceRef="1052" targetRef="1053"/>
+		<sequenceFlow id="1076" sourceRef="1038" targetRef="1040"/>
+		<sequenceFlow id="1077" sourceRef="1040" targetRef="1056"/>
+		<sequenceFlow id="1078" sourceRef="1056" targetRef="1040"/>
+		<sequenceFlow id="1079" sourceRef="1056" targetRef="1046"/>
+		<sequenceFlow id="1080" sourceRef="1041" targetRef="1057"/>
+		<sequenceFlow id="1081" sourceRef="1057" targetRef="1041"/>
+		<sequenceFlow id="1082" sourceRef="1057" targetRef="1050"/>
+		<sequenceFlow id="1083" sourceRef="1044" targetRef="1054"/>
+		<sequenceFlow id="1084" sourceRef="1054" targetRef="1061"/>
+		<sequenceFlow id="1085" sourceRef="1061" targetRef="1037"/>
+		<sequenceFlow id="1086" sourceRef="1061" targetRef="1045"/>
+		<sequenceFlow id="1087" sourceRef="1037" targetRef="1058"/>
+		<dataObject id="1092" owner="1054" name="cost" type="IntegerDataObject">
+			<script>
+			<![CDATA[
+from random import randint
+# This Python script is called for the generation of the integer data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return 1000
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="1093" owner="1038" name="license_first_issue" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange, randint
+
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+    samples=["2023-10-03T16:27:33.682+02:00","2017-10-03T16:27:33.682+02:00"]
+    return samples[0]
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="1094" owner="1037" name="product_units" type="IntegerDataObject">
+			<script>
+			<![CDATA[
+from random import randint
+# This Python script is called for the generation of the integer data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return 1000
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="1211" owner="1039" name="logistics_operator" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "logistics_operator_00"
+
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="1212" owner="1047" name="logistics_operator" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "logistics_operator_00"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="1213" owner="1040" name="km_distance" type="IntegerDataObject">
+			<script>
+			<![CDATA[
+from random import randint
+# This Python script is called for the generation of the integer data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return 300 
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="1215" owner="1041" name="km_distance" type="IntegerDataObject">
+			<script>
+			<![CDATA[
+from random import randint
+# This Python script is called for the generation of the integer data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return 10
+			]]>
+			</script>
+		</dataObject>
+	</elements>
+</process>
