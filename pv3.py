@@ -926,17 +926,15 @@ var fsmMap = map[string]*CustomFSM{
     return fsm_code
 """
 
-python3 pv3.py ./data/BPMN/newmotivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true 
-python3 pv3.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_sepsis.json true true
 RUN IN NON SIMULATION MODE
-python3 processvaultcompiler.py ./data/BPMN/newmotivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 10
-
+python3 pv3.py ./data/BPMN/newmotivating.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true
 RUN SEPSIS TEST IN NON SIMULATION
 python3 pv3.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_sepsis.json false true 15200
 UN MOTIVATING TEST IN NON SIMULATION
-python3 pv3.py ./data/BPMN/newmotivating.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 35999
+python3 pv3.py ./data/PNML/motivatingreduced.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 40000
 RUN TRAFFIC FINES TEST IN SIMULATION
-python3 pv3.py ./data/BPMN/trafficFines.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/trafficFines ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_traffic.json true false 10000
+python3 pv3.py ./data/PNML/trafficFines.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/trafficFines ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_traffic.json false true 10000
+
 """
 
 def main():

@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Read CSV
 #df_simulation = pd.read_csv('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_segment_size/test_simulation_1k/segsize_2/test_2_1.csv', decimal='.', header=0,)
-df_simulation = pd.read_csv('../data/testResults/memory_usage_motivating.csv', decimal='.', header=0)
+df_simulation = pd.read_csv('../data/testResults/success1/memory_usage_motivating.csv', decimal='.', header=0)
 # add a row in the dataframe (timestamp: min(df['Timestamp']) - 1, Memory Usage: 0)
 df_simulation = df_simulation._append({'Timestamp': min(df_simulation['Timestamp']) - 1, 'Memory Usage': 0}, ignore_index=True)
 df_simulation.loc[-1] = [min(df_simulation['Timestamp']) - 1, 0]  # adding a row
@@ -16,14 +16,18 @@ df_simulation.sort_index(inplace=True)
 #df_simulation = df_simulation.iloc[::1000]
 
 #df_sepsis = pd.read_csv('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_segment_size/test_sepsis/segsize_2/test_2_1.csv', decimal='.', header=0,)
-df_sepsis = pd.read_csv('../data/testResults/memory_usage_sepsis.csv', decimal='.', header=0,)
+df_sepsis = pd.read_csv('../data/testResults/success1/memory_usage_sepsis.csv', decimal='.', header=0,)
 df_sepsis = df_sepsis._append({'Timestamp': min(df_sepsis['Timestamp']) - 1, 'Memory Usage': 0}, ignore_index=True)
 df_sepsis.loc[-1] = [min(df_sepsis['Timestamp']) - 1, 0]  # adding a row
 df_sepsis.index = df_sepsis.index + 1  # shifting index
 df_sepsis.sort_index(inplace=True)
 #df_sepsis = df_sepsis.iloc[::20]
 
-#df_volvo = pd.read_csv('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_segment_size/test_volvo/segsize_2/test_2_1.csv', decimal='.', header=0,)
+#df_volvo = pd.read_csv('../data/testResults/memory_usage_trafficFines.csv', decimal='.', header=0,)
+#df_volvo = df_volvo._append({'Timestamp': min(df_volvo['Timestamp']) - 1, 'Memory Usage': 0}, ignore_index=True)
+#df_volvo.loc[-1] = [min(df_volvo['Timestamp']) - 1, 0]  # adding a row
+#df_volvo.index = df_volvo.index + 1  # shifting index
+#df_volvo.sort_index(inplace=True)
 #df_volvo = pd.read_csv('/content/drive/MyDrive/TEEs_for_Inter_Organization_Process_Mining/tests/Journal_tests/comparative_runtime_test/incrementalHeuristics.segsize100.volvo.csv', decimal='.', header=0,)
 
 
@@ -32,7 +36,7 @@ df_simulation['Timestamp'] = df_simulation['Timestamp'].apply(lambda x: datetime
 df_sepsis['Timestamp'] = df_sepsis['Timestamp'].apply(lambda x: datetime.utcfromtimestamp(x/1000))
 #df_volvo['Timestamp'] = df_volvo['Timestamp'].apply(lambda x: datetime.utcfromtimestamp(x/1000))
 
-#df_volvo = df_volvo.iloc[::2]
+#df_volvo = df_volvo.iloc[::1000]
 #df_simulation = df_simulation.iloc[::1]
 
 # Calculate first boot timestamp
@@ -83,7 +87,7 @@ plt.figure(figsize=(16,9))
 plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], label='Motivating scenario', color='deepskyblue', linewidth=2, marker = '', markersize=2)
 
 # Create a line plot for the dataset volvo
-#plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='BPIC 2013', color='tomato', linewidth=4, marker = 'v', markersize=8)
+#plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='Traffic Road Fines', color='tomato', linewidth=2, marker = '', markersize=2)
 
 # Create a line plot for the dataset sepsis
 plt.plot(result_sepsis['Durata Normalizzata'], result_sepsis['Memory usage (MB)'], label='Sepsis', color='forestgreen', linewidth=2, marker='', markersize=2)
@@ -96,10 +100,10 @@ plt.grid(True, linestyle='--')
 plt.tight_layout()
 
 plt.xlim([0, 100])
-plt.ylim([0,10])
+plt.ylim([0,8])
 
 
-plt.legend (loc='upper right', fontsize=25)
+plt.legend (loc='upper left', fontsize=25)
 
 #plt.fill_between(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'azure')
 plt.tight_layout()
