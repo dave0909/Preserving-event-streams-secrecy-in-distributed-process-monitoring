@@ -3,11 +3,13 @@ package processStateManager
 import (
 	"encoding/csv"
 	"fmt"
+	"github.com/edgelesssys/ego/ecrypto"
 	"log"
 	"main/complianceCheckingLogic"
 	"main/utils/xes"
 	"main/workflowLogic"
 	"math"
+	"net/rpc"
 	"os"
 	"path/filepath"
 	"time"
@@ -77,10 +79,11 @@ type ProcessStateManager struct {
 	m2                      float64
 	stopEventNumebr         int
 	TotalCounter            int
+	ExternalQueueClient     *rpc.Client
 }
 
 // Init a new ProcessStateManager
-func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}, stopEventNumber int) ProcessStateManager {
+func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}, stopEventNumber int, externalQueueClient *rpc.Client) ProcessStateManager {
 	//ccLogic, cNames := complianceCheckingLogic.InitComplianceCheckingLogic()
 	ccLogic, _ := complianceCheckingLogic.InitComplianceCheckingLogic()
 	psm := ProcessStateManager{
@@ -92,6 +95,7 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		runStarted:              time.Now(),
 		stopEventNumebr:         stopEventNumber,
 		TotalCounter:            0,
+		ExternalQueueClient:     externalQueueClient,
 	}
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
@@ -344,15 +348,38 @@ func (psm *ProcessStateManager) GetExpectedNextActivities(caseId string) (error,
 	if wfViolated {
 		return fmt.Errorf("Case %v is in an erroneous state", caseId), nil
 	}
-
 	return nil, psm.ProcessState.WfState.GetNextActivities(caseId)
 }
 
 // Wait for new events from the event channel
 func (psm *ProcessStateManager) WaitForEvents() {
-	for {
-		event := <-psm.EventChannel
-		psm.HandleEvent(event.ActivityID, event.CaseID, event.Timestamp, event.Attributes)
+	if psm.ExternalQueueClient == nil {
+		for {
+			event := <-psm.EventChannel
+			psm.HandleEvent(event.ActivityID, event.CaseID, event.Timestamp, event.Attributes)
+		}
+	} else {
+		for {
+			var event []byte
+			err := psm.ExternalQueueClient.Call("Queue.DequeueEvent", event, &event)
+			if err != nil {
+				continue
+			}
+			unsealedByteEvent, err := ecrypto.Unseal(event, []byte(""))
+			if err != nil {
+				fmt.Println("Error unsealing event: ", err)
+				panic(err)
+			}
+			//Convert the byte array to the string
+			stringEvent := string(unsealedByteEvent)
+			//Parse the event
+			parsedEvent, err := xes.ParseXes(stringEvent)
+			if err != nil {
+				fmt.Println("Error parsing event: ", err)
+				panic(err)
+			}
+			psm.HandleEvent(parsedEvent.ActivityID, parsedEvent.CaseID, parsedEvent.Timestamp, parsedEvent.Attributes)
+		}
 	}
 }
 

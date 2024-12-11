@@ -10,6 +10,7 @@ import (
 	"main/utils/attestation"
 	"main/utils/xes"
 	_ "net/http/pprof"
+	"net/rpc"
 	"os"
 	"runtime"
 	"strconv"
@@ -17,11 +18,13 @@ import (
 )
 
 func main() {
+
 	addr := os.Args[1]
 	manifestFileName := os.Args[2]
 	simulationMode := os.Args[3]
 	testMode := os.Args[4]
 	nEvents := os.Args[5]
+	withExternalQuery := os.Args[6]
 	//if testMode == "true" {
 	//	test.TEST_MODE = true
 	//	_, cancel := context.WithCancel(context.Background())
@@ -32,7 +35,6 @@ func main() {
 		nEvents = "0"
 	}
 	//fmt.Println("Number of processed events: ", nEvents)
-
 	n, err := strconv.Atoi(nEvents)
 	if err != nil {
 		// ... handle error
@@ -52,9 +54,21 @@ func main() {
 	} else {
 		attribute_extractors = nil
 	}
+	withExternalQueryBool, err := strconv.ParseBool(withExternalQuery)
+	if err != nil {
+		panic(err)
+	}
+	var queueClient *rpc.Client
+	if withExternalQueryBool {
+		// Connect to the RPC server
+		queueClient, err = rpc.Dial("tcp", "localhost:8387")
+		if err != nil {
+			log.Fatal("Dialing:", err)
+		}
+	}
 	eventChannel := make(chan xes.Event)
-	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n)
-	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool}
+	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n, queueClient)
+	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool, ExternalQueryClient: queueClient}
 	go eventDispatcher.StartRPCServer(addr)
 	time.Sleep(2 * time.Second)
 	eventDispatcher.SubscribeTo("localhost:6065")

@@ -1,6 +1,8 @@
 import os
 import subprocess
 import sys
+import threading
+
 import yaml
 import pm4py
 
@@ -930,7 +932,7 @@ RUN IN NON SIMULATION MODE
 python3 pv3.py ./data/BPMN/newmotivating.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6969 data/input/extraction_manifest_motivating.json true true
 RUN SEPSIS TEST IN NON SIMULATION
 python3 pv3.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_sepsis.json false true 15200
-UN MOTIVATING TEST IN NON SIMULATION
+RUN MOTIVATING TEST IN NON SIMULATION
 python3 pv3.py ./data/PNML/motivatingreduced.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 40000
 RUN TRAFFIC FINES TEST IN SIMULATION
 python3 pv3.py ./data/PNML/trafficFines.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/trafficFines ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_traffic.json false true 10000
@@ -938,7 +940,7 @@ python3 pv3.py ./data/PNML/trafficFines.pnml ./workflowLogic/workflowLogic.go ./
 """
 
 def main():
-    if len(sys.argv) != 10:
+    if len(sys.argv) != 11:
         print("Usage: python processvaultcompiler.py <bpmn_file_path> <output_go_file_path>")
         sys.exit(1)
 
@@ -951,7 +953,14 @@ def main():
     isInSimulation = sys.argv[7]
     isInTesting = sys.argv[8]
     nEvents = sys.argv[9]
+    withExternalQueue = sys.argv[10]
 
+    if withExternalQueue=="true":
+        def run_queue_server():
+            os.system("go run ./queue/queue.go localhost:8387")
+        queue_thread = threading.Thread(target=run_queue_server)
+        queue_thread.start()
+        print("External queue running at localhost:8387")
     control_flow_logic = generate_control_flow_logic(bpmn_file_path)
     compliance_checking_logic = generate_compliance_checking_logic(constraint_folder_path)
 
@@ -968,18 +977,18 @@ def main():
         go_file.write(control_flow_logic)
 
 
+
     #TODO: we should add the extraciton manifest file differently to the process vault
     #Set permissions to read and write for everyone (666)
     os.chmod(output_go_file_path, 0o666)
     if isInSimulation=="true":
         print("Building and running the Process Vault in simulation mode...")
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue
     else:
         print("Building and running the Process Vault in non-simulation mode...")
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue
         # Execute the build and run commands
     try:
-        print("Building and running the Process Vault...")
         subprocess.run(
             command,
             shell=True,

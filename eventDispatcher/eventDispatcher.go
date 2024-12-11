@@ -7,10 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/edgelesssys/ego/ecrypto"
 	"github.com/edgelesssys/ego/enclave"
 	"net"
 
-	//"github.com/edgelesssys/ego/enclave"
 	"log"
 	attestation "main/utils/attestation"
 	"main/utils/eventsubmission"
@@ -27,6 +27,7 @@ type EventDispatcher struct {
 	Address             string
 	AttributeExtractors map[string]interface{}
 	IsInSimulation      bool
+	ExternalQueryClient *rpc.Client
 }
 
 // GetEvidence method to get ProcessVault's evidence
@@ -77,9 +78,23 @@ func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmis
 		fmt.Println("Error parsing event: ", err)
 		return err
 	}
-	//TODO:here we should extract the attributes from the event according to the manifest
+	if ed.ExternalQueryClient != nil {
+		// Send the event to the external query server
+		var externalQueryReply string
+		//Convert decrypted event to a byte array
+		byteDecryptedEvent := []byte(decryptedEvent)
+		sealedEvent, err := ecrypto.SealWithUniqueKey(byteDecryptedEvent, []byte(""))
+		if err != nil {
+			fmt.Println("Error sealing event: ", err)
+		}
+		err = ed.ExternalQueryClient.Call("Queue.AddEvent", sealedEvent, &externalQueryReply)
+		if err != nil {
+			fmt.Println("Error calling external query server: ", err)
+		}
+	} else {
+		ed.EventChannel <- *event
+	}
 	*reply = "Event processed successfully"
-	ed.EventChannel <- *event
 	return nil
 }
 
