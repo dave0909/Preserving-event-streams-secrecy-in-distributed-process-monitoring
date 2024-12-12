@@ -12,6 +12,8 @@ import (
 	"net/rpc"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"time"
 )
 
@@ -225,7 +227,17 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	//Clear old events
 	if len(psm.ProcessState.EventLog) == 150 {
 		//clear the events log by removing the first 100 events
-		psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
+		//psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
+		//Clear the event log by removing the first 100 event. Use re assignments to avoid memory leaks
+		//newEventLog := []map[string]interface{}{}
+		//for i := 50; i < 150; i++ {
+		//	newEventLog = append(newEventLog, psm.ProcessState.EventLog[i])
+		//}
+		//psm.ProcessState.EventLog = nil
+		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, newEventLog...)
+		//newEventLog = nil
+		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, 100)
+		runtime.GC()
 	}
 	fmt.Println("Event number: ", psm.ProcessState.Counter)
 	duration := time.Since(firtsTs).Seconds()
@@ -288,6 +300,7 @@ func recordDataDuration(durationFromStart time.Duration, psm *ProcessStateManage
 	if err := writer.Write(record); err != nil {
 		log.Fatalf("Error writing record to CSV file: %v", err)
 	}
+	panic("End of the test")
 }
 
 //func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {

@@ -191,7 +191,8 @@ func (ed *EventDispatcher) sendHeartbeat(interval int, subscription attestation.
 		}
 		if reply == "heartbeat received" {
 			//Add the evidence to the subscription
-			subscription.Heartbeats = subscription.Heartbeats[:0]
+			//subscription.Heartbeats = subscription.Heartbeats[:0]
+			subscription.Heartbeats = nil
 			subscription.Heartbeats = append(subscription.Heartbeats, evidence)
 			//Update the subscription in the slice
 			for i, sub := range ed.Subscriptions[subscription.AgentAddress] {

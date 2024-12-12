@@ -800,79 +800,80 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 	resultMap := map[string]interface{}{}
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	for _, constraint := range ccl.preparedConstraints {
-		wg.Add(1)
-		go func(constraint Constraint) {
-			defer wg.Done()
-			res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			mu.Lock()
-			defer mu.Unlock()
-			for constraintName := range constraint.preparedEvalQuery.Modules() {
-				resultValue := res[0].Expressions[0].Value
-				resultValueMap, ok := resultValue.(map[string]interface{})
-				if !ok {
-					fmt.Println(res)
-					log.Fatalf("Failed to convert result from policy inspection")
-				}
-				//currentState := constraint.ConstraintState[traceId]
-				//nextStates := constraint.fsm.PossibleNextStates(int(currentState))
-				violations, ok := resultValueMap["violations"].(map[string]interface{})
-				if !ok {
-				}
-				pending, ok := resultValueMap["pending"].(map[string]interface{})
-				if !ok {
-				}
-				satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
-				if !ok {
-				}
-				temporarySatisfied, ok := resultValueMap["temporary_satisfied"].(map[string]interface{})
-				if !ok {
-				}
-				temporaryViolated, ok := resultValueMap["temporary_violated"].(map[string]interface{})
-				if !ok {
-				}
-				for caseId := range pending {
-					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 1) {
-						constraint.ConstraintState[caseId] = Pending
-						fmt.Println("Constraint ", constraintName, "in pending state for case ", caseId)
-						resultMap[traceId] = Pending
-					}
-				}
-				for caseId := range temporarySatisfied {
-					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 4) {
-						constraint.ConstraintState[caseId] = TemporarySatisfied
-						fmt.Println("Constraint ", constraintName, "in temporary satisfied state for case ", caseId)
-						resultMap[traceId] = TemporarySatisfied
+    evInputLog:=rego.EvalInput(eventLog)
+    for _, constraint := range ccl.preparedConstraints {
+        wg.Add(1)
+        go func(constraint Constraint, evInputLog rego.EvalOption) {
+            defer wg.Done()
+            res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, evInputLog)
+            if err != nil {
+                fmt.Println(err)
+                return
+            }
+            mu.Lock()
+            defer mu.Unlock()
+            for constraintName := range constraint.preparedEvalQuery.Modules() {
+                resultValue := res[0].Expressions[0].Value
+                resultValueMap, ok := resultValue.(map[string]interface{})
+                if !ok {
+                    fmt.Println(res)
+                    log.Fatalf("Failed to convert result from policy inspection")
+                }
+                //currentState := constraint.ConstraintState[traceId]
+                //nextStates := constraint.fsm.PossibleNextStates(int(currentState))
+                violations, ok := resultValueMap["violations"].(map[string]interface{})
+                if !ok {
+                }
+                pending, ok := resultValueMap["pending"].(map[string]interface{})
+                if !ok {
+                }
+                satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
+                if !ok {
+                }
+                temporarySatisfied, ok := resultValueMap["temporary_satisfied"].(map[string]interface{})
+                if !ok {
+                }
+                temporaryViolated, ok := resultValueMap["temporary_violated"].(map[string]interface{})
+                if !ok {
+                }
+                for caseId := range pending {
+                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 1) {
+                        constraint.ConstraintState[caseId] = Pending
+                        fmt.Println("Constraint ", constraintName, "in pending state for case ", caseId)
+                        resultMap[traceId] = Pending
+                    }
+                }
+                for caseId := range temporarySatisfied {
+                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 4) {
+                        constraint.ConstraintState[caseId] = TemporarySatisfied
+                        fmt.Println("Constraint ", constraintName, "in temporary satisfied state for case ", caseId)
+                        resultMap[traceId] = TemporarySatisfied
 
-					}
-				}
-				for caseId := range temporaryViolated {
-					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 5) {
-						constraint.ConstraintState[caseId] = TemporaryViolated
-						fmt.Println("Constraint ", constraintName, "in temporary violated state for case ", caseId)
-						resultMap[traceId] = TemporaryViolated
-					}
-				}
-				for caseId := range violations {
-					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 2) {
-						constraint.ConstraintState[caseId] = Violated
-						fmt.Println("Constraint ", constraintName, "in violated state for case ", caseId)
-						resultMap[traceId] = Violated
-					}
-				}
-				for caseId := range satisfied {
-					if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 3) {
-						constraint.ConstraintState[caseId] = Satisfied
-						fmt.Println("Constraint ", constraintName, "in satisfied state for case ", caseId)
-						resultMap[traceId] = Satisfied
-					}
-				}
-			}
-		}(constraint)
+                    }
+                }
+                for caseId := range temporaryViolated {
+                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 5) {
+                        constraint.ConstraintState[caseId] = TemporaryViolated
+                        fmt.Println("Constraint ", constraintName, "in temporary violated state for case ", caseId)
+                        resultMap[traceId] = TemporaryViolated
+                    }
+                }
+                for caseId := range violations {
+                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 2) {
+                        constraint.ConstraintState[caseId] = Violated
+                        fmt.Println("Constraint ", constraintName, "in violated state for case ", caseId)
+                        resultMap[traceId] = Violated
+                    }
+                }
+                for caseId := range satisfied {
+                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 3) {
+                        constraint.ConstraintState[caseId] = Satisfied
+                        fmt.Println("Constraint ", constraintName, "in satisfied state for case ", caseId)
+                        resultMap[traceId] = Satisfied
+                    }
+                }
+            }
+        }(constraint,evInputLog)
 	}
 	wg.Wait()
 	return resultMap

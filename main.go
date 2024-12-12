@@ -9,6 +9,7 @@ import (
 	"main/processStateManager"
 	"main/utils/attestation"
 	"main/utils/xes"
+	"net/http"
 	_ "net/http/pprof"
 	"net/rpc"
 	"os"
@@ -66,6 +67,9 @@ func main() {
 			log.Fatal("Dialing:", err)
 		}
 	}
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	eventChannel := make(chan xes.Event)
 	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n, queueClient)
 	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool, ExternalQueryClient: queueClient}
@@ -180,7 +184,7 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 
 			// Format memory stats
 			currentTime := time.Now().Unix()
-			alloc := m.Alloc
+			alloc := m.HeapAlloc
 			// Write to file
 			data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
 			_, _ = file.WriteString(data)
