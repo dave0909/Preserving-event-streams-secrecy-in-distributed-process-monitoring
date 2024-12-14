@@ -10,7 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-df = pd.read_csv('../data/testResults/memory_usage.csv', decimal='.', header=0)
+df = pd.read_csv('../data/testResults/v1/memory_usage_trafficFines_v1.csv', decimal='.', header=0)
 # SECONDS
 df['Timestamp'] = df['Timestamp'].apply(lambda x: datetime.utcfromtimestamp(x/1000))
 #Right know timestamps are taken every 50ms. consider points with timestamp every 200ms
@@ -72,12 +72,12 @@ plt.xlabel('Run completion percentage', fontsize = 30, labelpad= 15)
 plt.ylabel('Memory usage (MB)', fontsize = 30,  labelpad= 15)
 plt.grid(True, linestyle='--')
 plt.xlim([0, 101])
-plt.ylim(0, 20)
+plt.ylim(0, 300)
 plt.tight_layout()
 #plt.legend(['Memory usage trend', 'First attestation', 'First segment recieved', 'First computation'], loc='upper left', fontsize=25, framealpha=1)
 # plt.legend(['Memory usage trend', 'First segment recieved', 'First computation', 'First attestation'], loc='upper right', fontsize=18, framealpha=1, edgecolor="black", fancybox=False)
 
 plt.fill_between(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'azure')
 plt.tight_layout()
-plt.savefig('../data/testResults/memoryusage.pdf')
+plt.savefig('../data/testResults/memoryusage_trafficFines_v1.pdf')
 #plt.show()

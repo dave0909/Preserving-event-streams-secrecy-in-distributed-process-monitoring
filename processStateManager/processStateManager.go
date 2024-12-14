@@ -130,15 +130,16 @@ func (psm *ProcessStateManager) initNewCase(caseId string) {
 	//Map the case name to the token id
 	psm.ProcessState.WfState.CaseTokenId[caseId] = psm.WorkflowLogic.Petrinet.TokenId
 	//Find the start event transition checking the input matrix
-	for i, tr := range psm.WorkflowLogic.Petrinet.InputMatrix {
-		if tr[indexOfSource] == 1 {
-			//Start event found!
-			//Get the name of the start event from its index
-			start_event := psm.WorkflowLogic.Transitions[i]
-			//Fire the start event
-			psm.WorkflowLogic.FireTokenIdWithTransitionName(start_event, psm.ProcessState.WfState.CaseTokenId[caseId])
-		}
-	}
+	//TODO: here should be executed only if the input petrinet is derived from a BPMN diagram
+	//for i, tr := range psm.WorkflowLogic.Petrinet.InputMatrix {
+	//	if tr[indexOfSource] == 1 {
+	//		//Start event found!
+	//		//Get the name of the start event from its index
+	//		start_event := psm.WorkflowLogic.Transitions[i]
+	//Fire the start event
+	//		psm.WorkflowLogic.FireTokenIdWithTransitionName(start_event, psm.ProcessState.WfState.CaseTokenId[caseId])
+	//	}
+	//}
 }
 
 // Handle event by EventDispatcher
@@ -146,9 +147,8 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	//Check if the event exists in the workflow logic
 	firtsTs := time.Now()
 	psm.TotalCounter += 1
-	fmt.Println("total event number: ", psm.TotalCounter)
 	//TODO: this should be moved into the event dispatcher
-	if psm.WorkflowLogic.GetTransitionIndexByName(eventId) == -1 {
+	if psm.WorkflowLogic.GetTransitionIndicesByName(eventId) == nil {
 		fmt.Println("Unknown event")
 		return
 	}
@@ -161,6 +161,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		"timestamp":          timestamp,
 	}
 	addEventFlag := false
+	fmt.Println(eventId)
 	//Check if the eventId variable is a key in the "attribute_extraction" field of the extraction manifest
 	if _, ok := psm.ExtractionManifest[eventId]; ok {
 		//If the eventId is a key in the "attribute_extraction" field, extract the attributes
@@ -175,15 +176,10 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		addEventFlag = true
 	}
 
-	//for k, v := range data {
-	//	eventLogEntry[k] = v
-	//	//
-	//}
 	//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	//If the case is not in the cases map, add it
 	if !psm.ProcessState.Cases[caseId] {
 		psm.initNewCase(caseId)
-		//fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
 	}
 	//Check if the case is already in errouneous workflow state
 	_, wfViolated := psm.ProcessState.WfState.WorkflowViolations[caseId]
@@ -193,7 +189,6 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		//wfViolation := psm.ProcessState.WfState.WorkflowViolations[caseId]
 		//wfViolation.ErroneousSequence = append(wfViolation.ErroneousSequence, eventId)
 		//psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
-
 	} else {
 		//Fire the transition associated with the event
 		error := psm.WorkflowLogic.FireTokenIdWithTransitionName(eventId, psm.ProcessState.WfState.CaseTokenId[caseId])
@@ -207,8 +202,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 			//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
 		}
 	}
-	fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
-	//elaboratedLog := psm.prepareEventLog()
+	//fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
 	elaboratedLog := map[string][]map[string]interface{}{}
 	//Filter the event log to compute only the events with the same case id
 	//TODO: comment this go back as before
@@ -239,7 +233,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, 100)
 		runtime.GC()
 	}
-	fmt.Println("Event number: ", psm.ProcessState.Counter)
+	//fmt.Println("Event number: ", psm.ProcessState.Counter)
 	duration := time.Since(firtsTs).Seconds()
 	durationFromStart := time.Since(psm.runStarted)
 	psm.totalDuration += duration
@@ -257,8 +251,8 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	// Calculate standard deviation
 	variance := psm.m2 / float64(psm.ProcessState.Counter)
 	stdDev := math.Sqrt(variance)
-	fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
-	fmt.Println(psm.ProcessState.Counter, psm.stopEventNumebr)
+	//fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
+	fmt.Println("Processed events: ", psm.TotalCounter, " out of: ", psm.stopEventNumebr)
 	if psm.TotalCounter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
 		recordDataDuration(durationFromStart, psm, stdDev)
 	}

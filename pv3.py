@@ -207,7 +207,7 @@ def generate_go_code_from_petri_net(places, transitions, input_matrix, output_ma
     # Define the net structure
     go_code.append("package workflowLogic\n")
     go_code.append("import \"main/utils/petrinet\"\n\n")
-
+    go_code.append("import \"fmt\"\n\n")
 
     go_code.append("// Generated Petri Net Code\n")
 
@@ -271,68 +271,82 @@ func InitWorkflowLogic() WorkflowLogic {
 }
 
 // Get index of a transition by its name
-func (wf *WorkflowLogic) GetTransitionIndexByName(name string) int {
+func (wf *WorkflowLogic) GetTransitionIndicesByName(name string) []int {
+	indices := []int{}
 	for i, t := range wf.Transitions {
 		if t == name {
-			return i
+			indices = append(indices, i)
 		}
 	}
-	return -1
+	return indices
 }
 
-// Fire by transition name
-func (wf *WorkflowLogic) FireByTransitionName(name string) error {
-	transitionIndex := wf.GetTransitionIndexByName(name)
-	error := wf.Petrinet.Fire(transitionIndex)
-	return error
-}
+//func (wf *WorkflowLogic) GetTransitionIndexByName(name string) int {
+//	for i, t := range wf.Transitions {
+//		if t == name {
+//			return i
+//		}
+//	}
+//	return -1
+//}
 
-//func (wf *WorkflowLogic) FireTokenIdWithTransitionName(activityName string, caseId int) error {
-//	transitionIndex := wf.GetTransitionIndexByName(activityName)
-//	error := wf.Petrinet.FireWithTokenId(transitionIndex, caseId)
-//	if error == nil {
-//		//for each silent transition
-//		for _, t := range wf.SilentTransitions {
-//			//If the transition is enabled for the token
-//			enabledTransitions := wf.Petrinet.GetEnabledTransitionsForTokenId(caseId)
-//			//If the silent transition is enabled
-//			for _, et := range enabledTransitions {
-//				if et == t {
-//					//Fire the silent transition
-//					wf.Petrinet.FireWithTokenId(t, caseId)
+//	func (wf *WorkflowLogic) FireTokenIdWithTransitionName(activityName string, caseId int) error {
+//		transitionIndex := wf.GetTransitionIndexByName(activityName)
+//		error := wf.Petrinet.FireWithTokenId(transitionIndex, caseId)
+//		if error == nil {
+//			// Loop to handle recursive firing of silent transitions
+//			for {
+//				enabledTransitions := wf.Petrinet.GetEnabledTransitionsForTokenId(caseId)
+//				silentFired := false
+//				for _, t := range wf.SilentTransitions {
+//					for _, et := range enabledTransitions {
+//						if et == t {
+//							// Fire the silent transition
+//							wf.Petrinet.FireWithTokenId(t, caseId)
+//							silentFired = true
+//						}
+//					}
+//				}
+//				// If no silent transition was fired, break the loop
+//				if !silentFired {
+//					break
 //				}
 //			}
-//
 //		}
-//
+//		return error
 //	}
-//	return error
-//}
 func (wf *WorkflowLogic) FireTokenIdWithTransitionName(activityName string, caseId int) error {
-	transitionIndex := wf.GetTransitionIndexByName(activityName)
-	error := wf.Petrinet.FireWithTokenId(transitionIndex, caseId)
-	if error == nil {
-		// Loop to handle recursive firing of silent transitions
-		for {
-			enabledTransitions := wf.Petrinet.GetEnabledTransitionsForTokenId(caseId)
-			silentFired := false
-			for _, t := range wf.SilentTransitions {
-				for _, et := range enabledTransitions {
-					if et == t {
-						// Fire the silent transition
-						wf.Petrinet.FireWithTokenId(t, caseId)
-						silentFired = true
+	transitionIndices := wf.GetTransitionIndicesByName(activityName)
+	allFailed := true
+	for _, transitionIndex := range transitionIndices {
+		err := wf.Petrinet.FireWithTokenId(transitionIndex, caseId)
+		if err == nil {
+			allFailed = false
+			// Loop to handle recursive firing of silent transitions
+			for {
+				enabledTransitions := wf.Petrinet.GetEnabledTransitionsForTokenId(caseId)
+				silentFired := false
+				for _, t := range wf.SilentTransitions {
+					for _, et := range enabledTransitions {
+						if et == t {
+							// Fire the silent transition
+							wf.Petrinet.FireWithTokenId(t, caseId)
+							silentFired = true
+						}
 					}
 				}
-			}
-			// If no silent transition was fired, break the loop
-			if !silentFired {
-				break
+				// If no silent transition was fired, break the loop
+				if !silentFired {
+					break
+				}
 			}
 		}
 	}
-	return error
-}
+	if allFailed {
+		return fmt.Errorf("Cannot fire any of the transition index %v", transitionIndices)
+	} else {
+		return nil
+	}}
 
 // Get next activities by their names
 func (wf *WorkflowLogic) GetNextActivities() []string {
@@ -430,10 +444,9 @@ def generate_input_output_matrices(places, transitions, arcs):
 #     return go_code
 def parse_pnml_to_petri(pnml_file_path):
     net, initial_marking, final_marking = pnml_importer.import_net(pnml_file_path)
-    trans_names = {t.name: t.label for t in net.transitions}
+    trans_names = {t.name: (t.label if t.label is not None else t.name) for t in net.transitions}
     silent_transitions = {t.name for t in net.transitions if t.label is None}
     return net, trans_names, silent_transitions
-
 def generate_control_flow_logic(file_path):
     if file_path.endswith(".bpmn"):
         petrinet, trans_names, silent_transition = parse_bpmn_to_petri(file_path)
@@ -453,7 +466,6 @@ def generate_control_flow_logic(file_path):
                 place.name="sink"
         if input_place_index==-1 or output_place_index==-1:
             raise ValueError("The input and output place are not found")
-
     else:
         raise ValueError("Unsupported file type. Please use a .bpmn or .pnml file.")
     places = sorted(petrinet.places, key=lambda place: place.name)
