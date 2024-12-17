@@ -953,7 +953,7 @@ python3 pv3.py ./data/PNML/trafficFinesrevised.pnml ./workflowLogic/workflowLogi
 """
 
 def main():
-    if len(sys.argv) != 11:
+    if len(sys.argv) != 12:
         print("Usage: python processvaultcompiler.py <bpmn_file_path> <output_go_file_path>")
         sys.exit(1)
 
@@ -967,6 +967,7 @@ def main():
     isInTesting = sys.argv[8]
     nEvents = sys.argv[9]
     withExternalQueue = sys.argv[10]
+    slidingWindowSize= sys.argv[11]
 
     if withExternalQueue=="true":
         def run_queue_server():
@@ -996,10 +997,10 @@ def main():
     os.chmod(output_go_file_path, 0o666)
     if isInSimulation=="true":
         print("Building and running the Process Vault in simulation mode...")
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue + " "+slidingWindowSize
     else:
         print("Building and running the Process Vault in non-simulation mode...")
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue+ " "+slidingWindowSize
         # Execute the build and run commands
     try:
         subprocess.run(

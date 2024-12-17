@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Function to run the process state agent
+run_process_state_agent() {
+    CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go run ../../procesStateAgent/processStateAgent.go localhost:6065 localhost:1234 false
+}
+
+# Function to run the process vault
+run_process_vault() {
+    # Change to the directory where the main executable is located
+    cd ../..
+    python3 pv3.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 ./data/input/extraction_manifest_sepsis.json false true 15200 false 150
+    # Change back to the original directory
+    cd -
+}
+
+run_event_stream_generator(){
+  cd ../../eventStreamGenerator
+  python3 event_stream_from_log.py ../data/xes/sepsis.xes
+  cd -
+}
+
+# Trap SIGINT to terminate background processes
+trap 'kill $(jobs -p); exit' SIGINT
+
+run_event_stream_generator &
+sleep 3
+
+run_process_vault &
+sleep 3
+
+run_process_state_agent
+
+# Wait for all background processes to finish
+wait

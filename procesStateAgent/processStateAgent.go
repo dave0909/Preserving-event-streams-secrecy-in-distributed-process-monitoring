@@ -81,7 +81,7 @@ func (psa *ProcessStateAgent) readEventStream(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	for {
 		event, err := reader.ReadString('\n')
-		fmt.Println("Event received: ", event)
+		//fmt.Println("Event received: ", event)
 		if err != nil {
 			fmt.Println("Error reading from server:", err)
 			continue

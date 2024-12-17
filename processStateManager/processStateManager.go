@@ -83,10 +83,11 @@ type ProcessStateManager struct {
 	TotalCounter            int
 	ExternalQueueClient     *rpc.Client
 	FirstInit               bool
+	slidingWindowSize       int
 }
 
 // Init a new ProcessStateManager
-func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}, stopEventNumber int, externalQueueClient *rpc.Client) ProcessStateManager {
+func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}, stopEventNumber int, externalQueueClient *rpc.Client, slidingWindowSize int) ProcessStateManager {
 	//ccLogic, cNames := complianceCheckingLogic.InitComplianceCheckingLogic()
 	ccLogic, _ := complianceCheckingLogic.InitComplianceCheckingLogic()
 	psm := ProcessStateManager{
@@ -100,6 +101,7 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		TotalCounter:            0,
 		ExternalQueueClient:     externalQueueClient,
 		FirstInit:               false,
+		slidingWindowSize:       slidingWindowSize,
 	}
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
@@ -118,6 +120,7 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		ComplianceCheckingViolations: ccViolation,
 	}
 	psm.ProcessState = ps
+	fmt.Println("Init PSM with sliding window set to", slidingWindowSize)
 	return psm
 
 }
@@ -226,18 +229,12 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	}
 	//Clear old events
-	if len(psm.ProcessState.EventLog) == 150 {
+	//if len(psm.ProcessState.EventLog) == 150 {
+	if len(psm.ProcessState.EventLog) == psm.slidingWindowSize {
+
 		//clear the events log by removing the first 100 events
 		//psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
-		//Clear the event log by removing the first 100 event. Use re assignments to avoid memory leaks
-		//newEventLog := []map[string]interface{}{}
-		//for i := 50; i < 150; i++ {
-		//	newEventLog = append(newEventLog, psm.ProcessState.EventLog[i])
-		//}
-		//psm.ProcessState.EventLog = nil
-		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, newEventLog...)
-		//newEventLog = nil
-		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, 100)
+		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, psm.slidingWindowSize-50)
 		runtime.GC()
 	}
 	//fmt.Println("Event number: ", psm.ProcessState.Counter)
@@ -303,23 +300,6 @@ func recordDataDuration(durationFromStart time.Duration, psm *ProcessStateManage
 	}
 	panic("End of the test")
 }
-
-//func (psm *ProcessStateManager) prepareEventLog() map[string]interface{} {
-//	elaboratedLog := map[string]interface{}{}
-//	elaboratedLog["events"] = []interface{}{}
-//	//For each event in the log
-//	for _, event := range psm.ProcessState.Events {
-//		singleEvent := map[string]interface{}{}
-//		singleEvent["trace_concept_name"] = event.CaseId
-//		singleEvent["concept_name"] = event.Activity
-//		singleEvent["timestamp"] = event.Timestamp
-//		for k, v := range event.Data {
-//			singleEvent[k] = v
-//		}
-//		elaboratedLog["events"] = append(elaboratedLog["events"].([]interface{}), singleEvent)
-//	}
-//	return elaboratedLog
-//}
 
 func (psm *ProcessStateManager) initWorkflowViolation(eventId string, caseId string, timestamp string, error error) {
 	//Reset expect next activities for the case

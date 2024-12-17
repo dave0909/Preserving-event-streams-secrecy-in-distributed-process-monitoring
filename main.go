@@ -24,6 +24,7 @@ func main() {
 	testMode := os.Args[4]
 	nEvents := os.Args[5]
 	withExternalQuery := os.Args[6]
+	slidingWindowSize := os.Args[7]
 	//Parse the boolean value of the simulation mode
 	if nEvents == "" {
 		nEvents = "0"
@@ -60,8 +61,13 @@ func main() {
 			log.Fatal("Dialing:", err)
 		}
 	}
+	slidingWindowInt, err := strconv.Atoi(slidingWindowSize)
+	if err != nil {
+		// ... handle error
+		panic(err)
+	}
 	eventChannel := make(chan xes.Event)
-	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n, queueClient)
+	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n, queueClient, slidingWindowInt)
 	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool, ExternalQueryClient: queueClient}
 	go eventDispatcher.StartRPCServer(addr)
 	time.Sleep(2 * time.Second)
