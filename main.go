@@ -9,8 +9,6 @@ import (
 	"main/processStateManager"
 	"main/utils/attestation"
 	"main/utils/xes"
-	"net/http"
-	_ "net/http/pprof"
 	"net/rpc"
 	"os"
 	"runtime"
@@ -26,11 +24,6 @@ func main() {
 	testMode := os.Args[4]
 	nEvents := os.Args[5]
 	withExternalQuery := os.Args[6]
-	//if testMode == "true" {
-	//	test.TEST_MODE = true
-	//	_, cancel := context.WithCancel(context.Background())
-	//	go test.PrintRamUsage(cancel)
-	//}
 	//Parse the boolean value of the simulation mode
 	if nEvents == "" {
 		nEvents = "0"
@@ -67,9 +60,6 @@ func main() {
 			log.Fatal("Dialing:", err)
 		}
 	}
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 	eventChannel := make(chan xes.Event)
 	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n, queueClient)
 	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool, ExternalQueryClient: queueClient}
@@ -172,26 +162,29 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 	defer ticker.Stop()
 
 	for {
-		fmt.Println(psm.TotalCounter, nEvents)
-		if psm.TotalCounter == nEvents {
-			break
-		}
-		select {
-		case <-ticker.C:
-			// Capture memory statistics
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
+		if psm.FirstInit {
+			if psm.TotalCounter == nEvents {
+				break
+			}
+			select {
+			case <-ticker.C:
+				//runtime.GC()
+				// Capture memory statistics
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
 
-			// Format memory stats
-			currentTime := time.Now().Unix()
-			alloc := m.HeapAlloc
-			// Write to file
-			data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
-			_, _ = file.WriteString(data)
+				// Format memory stats
+				currentTime := time.Now().Unix()
+				alloc := m.HeapAlloc
+				// Write to file
+				data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
+				_, _ = file.WriteString(data)
 
-			// Also print to the console
-			fmt.Printf("%s - Memory Usage: %d MiB", currentTime, alloc)
+				// Also print to the console
+				fmt.Printf("%s - Memory Usage: %d MiB", currentTime, alloc)
+			}
 		}
+
 	}
 	fmt.Println("End of the test after ", nEvents, "events")
 }

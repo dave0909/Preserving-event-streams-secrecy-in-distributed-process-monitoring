@@ -78,7 +78,7 @@ TCP_IP = 'localhost'
 TCP_PORT = 1234
 BUFFER_SIZE = 1024
 
-log_path = '../data/xes/trafficFines.xes'
+log_path = '../data/xes/motivatingnew.xes'
 log = xes_importer.apply(log_path)
 print(log[0])
 

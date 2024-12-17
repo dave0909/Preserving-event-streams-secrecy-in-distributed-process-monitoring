@@ -82,6 +82,7 @@ type ProcessStateManager struct {
 	stopEventNumebr         int
 	TotalCounter            int
 	ExternalQueueClient     *rpc.Client
+	FirstInit               bool
 }
 
 // Init a new ProcessStateManager
@@ -98,6 +99,7 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		stopEventNumebr:         stopEventNumber,
 		TotalCounter:            0,
 		ExternalQueueClient:     externalQueueClient,
+		FirstInit:               false,
 	}
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
@@ -144,6 +146,11 @@ func (psm *ProcessStateManager) initNewCase(caseId string) {
 
 // Handle event by EventDispatcher
 func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, timestamp string, data map[string]interface{}) {
+	if psm.stopEventNumebr != 0 {
+		if !psm.FirstInit {
+			psm.FirstInit = true
+		}
+	}
 	//Check if the event exists in the workflow logic
 	firtsTs := time.Now()
 	psm.TotalCounter += 1

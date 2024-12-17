@@ -5,25 +5,31 @@ from datetime import datetime
 
 
 
-# Read CSV
-#df_simulation = pd.read_csv('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_segment_size/test_simulation_1k/segsize_2/test_2_1.csv', decimal='.', header=0,)
-df_simulation = pd.read_csv('../data/testResults/success1/memory_usage_motivating.csv', decimal='.', header=0)
+# For multilog test
+#df_simulation = pd.read_csv('../data/testResults/v1/memory_usage_motivating_v1.csv', decimal='.', header=0)
+#df_sepsis = pd.read_csv('../data/testResults/v1/memory_usage_sepsis_v1.csv', decimal='.', header=0,)
+#df_volvo = pd.read_csv('../data/testResults/success1/memory_usage_trafficFines.csv', decimal='.', header=0,)
+
+#For trafficFinesTests
+df_simulation = pd.read_csv('../data/testResults/v1/memory_usage_trafficFines_v1.csv', decimal='.', header=0)
+df_sepsis = pd.read_csv('../data/testResults/v1/memory_usage_trafficFines_v1.1.csv', decimal='.', header=0,)
+df_volvo = pd.read_csv('../data/testResults/success1/memory_usage_trafficFines.csv', decimal='.', header=0,)
+
+
+
 # add a row in the dataframe (timestamp: min(df['Timestamp']) - 1, Memory Usage: 0)
-df_simulation = df_simulation._append({'Timestamp': min(df_simulation['Timestamp']) - 1, 'Memory Usage': 0}, ignore_index=True)
 df_simulation.loc[-1] = [min(df_simulation['Timestamp']) - 1, 0]  # adding a row
 df_simulation.index = df_simulation.index + 1  # shifting index
 df_simulation.sort_index(inplace=True)
 #df_simulation = df_simulation.iloc[::1000]
 
-#df_sepsis = pd.read_csv('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_segment_size/test_sepsis/segsize_2/test_2_1.csv', decimal='.', header=0,)
-df_sepsis = pd.read_csv('../data/testResults/success1/memory_usage_sepsis.csv', decimal='.', header=0,)
+#df_sepsis = pd.read_csv('../data/testResults/v1/memory_usage_sepsis_v1.csv', decimal='.', header=0,)
 df_sepsis = df_sepsis._append({'Timestamp': min(df_sepsis['Timestamp']) - 1, 'Memory Usage': 0}, ignore_index=True)
 df_sepsis.loc[-1] = [min(df_sepsis['Timestamp']) - 1, 0]  # adding a row
 df_sepsis.index = df_sepsis.index + 1  # shifting index
 df_sepsis.sort_index(inplace=True)
 #df_sepsis = df_sepsis.iloc[::20]
 
-df_volvo = pd.read_csv('../data/testResults/success1/memory_usage_trafficFines.csv', decimal='.', header=0,)
 df_volvo=df_volvo[:len(df_simulation)]
 df_volvo = df_volvo._append({'Timestamp': min(df_volvo['Timestamp']) - 1, 'Memory Usage': 0}, ignore_index=True)
 df_volvo.loc[-1] = [min(df_volvo['Timestamp']) - 1, 0]  # adding a row
@@ -84,13 +90,13 @@ pd.options.display.float_format = '{:.2f}'.format
 plt.style.use("seaborn-v0_8-bright")
 plt.figure(figsize=(16,9))
 
-plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], label='Motivating scenario', color='deepskyblue', linewidth=2, marker = '', markersize=2)
+plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], label='Motivating scenario', color='blue', linewidth=4, marker = '', markersize=2 , alpha=0.7)
 
 # Create a line plot for the dataset volvo
-plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='Traffic Road Fines (sampled)', color='tomato', linewidth=2, marker = '', markersize=2)
+plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='Traffic Road Fines (sampled)', color='red', linewidth=2, marker = '', markersize=2, alpha=0.7)
 
 # Create a line plot for the dataset sepsis
-plt.plot(result_sepsis['Durata Normalizzata'], result_sepsis['Memory usage (MB)'], label='Sepsis', color='forestgreen', linewidth=2, marker='', markersize=2)
+plt.plot(result_sepsis['Durata Normalizzata'], result_sepsis['Memory usage (MB)'], label='Sepsis', color='green', linewidth=2, marker='', markersize=2, alpha =0.7)
 
 plt.xticks(fontsize=30)
 plt.yticks(fontsize=30)
@@ -100,7 +106,7 @@ plt.grid(True, linestyle='--')
 plt.tight_layout()
 
 plt.xlim([0, 100])
-plt.ylim([0,20])
+plt.ylim([0,300])
 
 
 plt.legend (loc='upper left', fontsize=25)
@@ -108,6 +114,6 @@ plt.legend (loc='upper left', fontsize=25)
 #plt.fill_between(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'azure')
 plt.tight_layout()
 #plt.savefig('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_memoryusage/memoryusage3.pdf')
-plt.savefig('../data/testResults/memoryusageMultiplot.pdf')
+plt.savefig('../data/testResults/memoryusageMultiplot_garbage.pdf')
 #plt.show()
 exit()
