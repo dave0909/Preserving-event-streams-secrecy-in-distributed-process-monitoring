@@ -2,53 +2,74 @@ package workflowLogic
 
 import "main/utils/petrinet"
 
+
 import "fmt"
+
 
 // Generated Petri Net Code
 
 var places = []string{
-	"n1", "n10", "n11", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "sink", "source",
+"n1", "n10", "n11", "n12", "n13", "n14", "n15", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "sink", "source",
 }
 
 var transitions = []string{
-	"Add penalty", "Appeal to Judge", "Create Fine", "Insert Date Appeal to Prefecture", "Insert Fine Notification", "Notify Result Appeal to Offender", "Payment", "Receive Result Appeal from Prefecture", "Send Appeal to Prefecture", "Send Fine", "Send for Credit Collection",
+"Admission IC", "Admission NC", "CRP", "ER Registration", "ER Sepsis Triage", "ER Triage", "IV Antibiotics", "IV Liquid", "LacticAcid", "Leucocytes", "Release A", "Release B", "Release C", "Release D", "Release E", "Return ER", "n34", "n35",
 }
 
 var inputMatrix = [][]int{
 
-	{0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-	{0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0},
-	{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0},
+    {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0},
+    {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0},
+    {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
 }
 
 var outputMatrix = [][]int{
 
-	{0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
-	{0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
-	{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
-	{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
-	{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0},
+    {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+    {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 }
 
-var initialMarking = []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+var initialMarking = []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 // Indices of transitions associated with gateways
 
-var silentTransitionIndices = []int{}
+var silentTransitionIndices = []int{
+
+16, 17,
+
+}
+
 
 type WorkflowLogic struct {
 	Petrinet          petrinet.Net
@@ -148,8 +169,7 @@ func (wf *WorkflowLogic) FireTokenIdWithTransitionName(activityName string, case
 		return fmt.Errorf("Cannot fire any of the transition index %v", transitionIndices)
 	} else {
 		return nil
-	}
-}
+	}}
 
 // Get next activities by their names
 func (wf *WorkflowLogic) GetNextActivities() []string {
@@ -202,5 +222,6 @@ func (wf *WorkflowLogic) GetEnabledTransitionsForTokenId(tokenId int) []string {
 }
 
 func (wf *WorkflowLogic) GetSourceAndSinkIndices() (int, int) {
-	return 12, 11 // source index, sink index
+    return 16, 15 // source index, sink index
 }
+

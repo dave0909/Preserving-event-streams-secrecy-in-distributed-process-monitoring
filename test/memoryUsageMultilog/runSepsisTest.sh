@@ -2,14 +2,14 @@
 
 # Function to run the process state agent
 run_process_state_agent() {
-    CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go run ../../procesStateAgent/processStateAgent.go localhost:6065 localhost:1234 false
+    CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go run ../../procesStateAgent/processStateAgent.go localhost:6065 localhost:1234 true
 }
 
 # Function to run the process vault
 run_process_vault() {
     # Change to the directory where the main executable is located
     cd ../..
-    python3 pv3.py ./data/PNML/sepsis.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 ./data/input/extraction_manifest_sepsis.json false true 15200 false 150
+    python3 pv3.py ./data/PNML/sepsis.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 ./data/input/extraction_manifest_sepsis.json true true 15200 false 150
     # Change back to the original directory
     cd -
 }

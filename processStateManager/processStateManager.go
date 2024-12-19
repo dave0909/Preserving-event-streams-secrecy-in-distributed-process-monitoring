@@ -53,7 +53,9 @@ type WorkflowState struct {
 	//Map case names to an array of token ids
 	CaseTokenId map[string]int
 	//Map case names to an array of violations
-	WorkflowViolations map[string]WorkflowViolation
+	//WorkflowViolations map[string]WorkflowViolation
+	//1 for pending, 2 for violated, 3 for satisfied
+	WorkflowStatus map[string]int
 }
 
 // Get the next possible activities for a case
@@ -62,9 +64,11 @@ func (wf *WorkflowState) GetNextActivities(caseId string) []string {
 }
 
 // Get the workflow violation
-func (wf *WorkflowState) GetViolations() map[string]WorkflowViolation {
-	return wf.WorkflowViolations
-}
+//func (wf *WorkflowState) GetViolations() map[string]WorkflowViolation {
+//return wf.WorkflowViolations
+//}
+
+func (wf *WorkflowState) GetStatus(caseId string) int { return wf.WorkflowStatus[caseId] }
 
 // ProcessStateManager struct
 type ProcessStateManager struct {
@@ -114,8 +118,9 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		Cases: map[string]bool{},
 		WfState: WorkflowState{
 			expectNextActivities: map[string][]string{},
-			WorkflowViolations:   map[string]WorkflowViolation{},
-			CaseTokenId:          map[string]int{},
+			//WorkflowViolations:   map[string]WorkflowViolation{},
+			WorkflowStatus: map[string]int{},
+			CaseTokenId:    map[string]int{},
 		},
 		ComplianceCheckingViolations: ccViolation,
 	}
@@ -128,12 +133,15 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 // Init a new case
 func (psm *ProcessStateManager) initNewCase(caseId string) {
 	psm.ProcessState.Cases[caseId] = true
+	//Set the status of the case to pending
+	psm.ProcessState.WfState.WorkflowStatus[caseId] = 1
 	indexOfSource, _ := psm.WorkflowLogic.GetSourceAndSinkIndices()
 	psm.WorkflowLogic.Petrinet.State[indexOfSource] += 1
 	///psm.WorkflowLogic.Petrinet.TokenIds[indexOfSource] = append(psm.WorkflowLogic.Petrinet.TokenIds[indexOfSource], 1)
 	psm.WorkflowLogic.Petrinet.Init()
 	//Map the case name to the token id
 	psm.ProcessState.WfState.CaseTokenId[caseId] = psm.WorkflowLogic.Petrinet.TokenId
+
 	//Find the start event transition checking the input matrix
 	//TODO: here should be executed only if the input petrinet is derived from a BPMN diagram
 	//for i, tr := range psm.WorkflowLogic.Petrinet.InputMatrix {
@@ -158,10 +166,6 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	firtsTs := time.Now()
 	psm.TotalCounter += 1
 	//TODO: this should be moved into the event dispatcher
-	if psm.WorkflowLogic.GetTransitionIndicesByName(eventId) == nil {
-		fmt.Println("Unknown event")
-		return
-	}
 	psm.ProcessState.Counter += 1
 	//Add the event to the list of events
 	//psm.ProcessState.Events = append(psm.ProcessState.Events, event)
@@ -171,7 +175,6 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		"timestamp":          timestamp,
 	}
 	addEventFlag := false
-	fmt.Println(eventId)
 	//Check if the eventId variable is a key in the "attribute_extraction" field of the extraction manifest
 	if _, ok := psm.ExtractionManifest[eventId]; ok {
 		//If the eventId is a key in the "attribute_extraction" field, extract the attributes
@@ -185,37 +188,39 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 		addEventFlag = true
 	}
-
-	//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
-	//If the case is not in the cases map, add it
-	if !psm.ProcessState.Cases[caseId] {
-		psm.initNewCase(caseId)
-	}
-	//Check if the case is already in errouneous workflow state
-	_, wfViolated := psm.ProcessState.WfState.WorkflowViolations[caseId]
-	if wfViolated {
-		//Append the current event to the erroneous sequence
-		//TODO: UNCOMMENT THIS TO KEEP TRACK OF THE ERRONEOUS SEQUENCE
-		//wfViolation := psm.ProcessState.WfState.WorkflowViolations[caseId]
-		//wfViolation.ErroneousSequence = append(wfViolation.ErroneousSequence, eventId)
-		//psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
-	} else {
-		//Fire the transition associated with the event
-		error := psm.WorkflowLogic.FireTokenIdWithTransitionName(eventId, psm.ProcessState.WfState.CaseTokenId[caseId])
-		if error != nil {
-			//If the transition failed, generate a new workflow violation
-			psm.initWorkflowViolation(eventId, caseId, timestamp, error)
-			fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
+	//Check if the event is in the workflow logic
+	if psm.WorkflowLogic.GetTransitionIndicesByName(eventId) != nil {
+		//Check if the case is already in the process state
+		if !psm.ProcessState.Cases[caseId] {
+			//If the case is not in the process state, initialize a new case
+			psm.initNewCase(caseId)
+		}
+		//Check if the case is already in errouneous workflow state
+		//_, cfStatus := psm.ProcessState.WfState.WorkflowViolations[caseId]
+		cfStatus := psm.ProcessState.WfState.GetStatus(caseId)
+		if cfStatus == 2 {
+			//Append the current event to the erroneous sequence
+			//TODO: UNCOMMENT THIS TO KEEP TRACK OF THE ERRONEOUS SEQUENCE
+			//wfViolation := psm.ProcessState.WfState.WorkflowViolations[caseId]
+			//wfViolation.ErroneousSequence = append(wfViolation.ErroneousSequence, eventId)
+			//psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
 		} else {
-			//If the transition was successful, update the workflow state
-			psm.updateWorkflowState(caseId)
-			//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
+			//Fire the transition associated with the event
+			error := psm.WorkflowLogic.FireTokenIdWithTransitionName(eventId, psm.ProcessState.WfState.CaseTokenId[caseId])
+			if error != nil {
+				//If the transition failed, generate a new workflow violation
+				psm.initWorkflowViolation(eventId, caseId, timestamp, error)
+				fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
+			} else {
+				//If the transition was successful, update the workflow state
+				psm.updateWorkflowState(caseId)
+				//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
+			}
 		}
 	}
 	//fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
 	elaboratedLog := map[string][]map[string]interface{}{}
 	//Filter the event log to compute only the events with the same case id
-	//TODO: comment this go back as before
 	elaboratedLog["events"] = []map[string]interface{}{}
 	for _, event := range psm.ProcessState.EventLog {
 		if event["trace_concept_name"] == caseId {
@@ -304,16 +309,17 @@ func recordDataDuration(durationFromStart time.Duration, psm *ProcessStateManage
 func (psm *ProcessStateManager) initWorkflowViolation(eventId string, caseId string, timestamp string, error error) {
 	//Reset expect next activities for the case
 	psm.ProcessState.WfState.expectNextActivities[caseId] = []string{}
-
 	//Generate a new workflow violation with the current event
-	wfViolation := WorkflowViolation{
-		//GeneratedByEvent:  eventId,
-		GeneratedByCase: caseId,
-		Timestamp:       timestamp,
-		//ErroneousSequence: []string{eventId},
-	}
+	//wfViolation := WorkflowViolation{
+	//	//GeneratedByEvent:  eventId,
+	//	GeneratedByCase: caseId,
+	//	Timestamp:       timestamp,
+	//	//ErroneousSequence: []string{eventId},
+	//}
 	//Add the new workflow violation to the workflow violations map
-	psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
+	//psm.ProcessState.WfState.WorkflowViolations[caseId] = wfViolation
+	//Set the status of the case to violated
+	psm.ProcessState.WfState.WorkflowStatus[caseId] = 2
 }
 
 func (psm *ProcessStateManager) updateWorkflowState(caseId string) {
@@ -325,7 +331,7 @@ func (psm *ProcessStateManager) updateWorkflowState(caseId string) {
 	nextTransitions := psm.WorkflowLogic.GetEnabledTransitionsForTokenId(psm.ProcessState.WfState.CaseTokenId[caseId])
 	//Iterate over the possible next transitions
 	for _, transition := range nextTransitions {
-		//if the transition is not already in the expect next activities
+		//If the transition is not already in the expect next activities
 		if !processedTransitions[transition] {
 			//Add the possible next transition to the expect next activities
 			psm.ProcessState.WfState.expectNextActivities[caseId] = append(psm.ProcessState.WfState.expectNextActivities[caseId], transition)
@@ -338,7 +344,8 @@ func (psm *ProcessStateManager) updateWorkflowState(caseId string) {
 // Get the expected next activities for a case
 func (psm *ProcessStateManager) GetExpectedNextActivities(caseId string) (error, []string) {
 	//Check if the case is in errouneous state
-	_, wfViolated := psm.ProcessState.WfState.WorkflowViolations[caseId]
+	//_, wfViolated := psm.ProcessState.WfState.WorkflowViolations[caseId]
+	wfViolated := psm.ProcessState.WfState.GetStatus(caseId) == 2
 	if wfViolated {
 		return fmt.Errorf("Case %v is in an erroneous state", caseId), nil
 	}
@@ -381,6 +388,6 @@ func (psm *ProcessStateManager) WaitForEvents() {
 func (psm *ProcessStateManager) PrintProcessState() {
 	fmt.Println("Printing process state")
 	fmt.Println("Next activities", psm.ProcessState.WfState.expectNextActivities)
-	fmt.Println("Control Flow Violations", psm.ProcessState.WfState.WorkflowViolations)
+	fmt.Println("Control Flow Violations", psm.ProcessState.WfState.WorkflowStatus)
 	fmt.Println("Compliance Checking violations", psm.ProcessState.ComplianceCheckingViolations)
 }
