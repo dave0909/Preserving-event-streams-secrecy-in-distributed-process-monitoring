@@ -26,26 +26,69 @@ type CustomFSM struct {
 // Generated process constraints code
 
 var constraintNames = []string{
-"iv_antibiotics_within_onehour", "lactic_acid_within_onehour"}
+"inspect_goods_within_onehour", "separation_of_duty", "shipment_cost", "truck_policy"}
 
 var constraints = []string{
 
-`package iv_antibiotics_within_onehour
+`package inspect_goods_within_onehour
 import rego.v1
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
+## Define a rule to check if the most recent event is "IV Antibiotics"
+#reached_present[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"}) > 0
+#}
+#
+## Pending condition
+#pending[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Truck reached costumer (TRC)"
+#}
+#
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Inspect goods (IG)"
+#    not inspect_goods_within_one_hour[trace_id]
+#}
+#
+## Violation condition, when the trace is over and the constraint is in pending state
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Order reception confirmed (ORC)"
+#}
+#
+## Satisfied condition, when I receive an inspect goods activity and the constraint is in pending state
+#satisfied[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Inspect goods (IG)"
+#    inspect_goods_within_one_hour[trace_id]
+#}
+#
+## Define a rule to check if "Inspect goods (IG)" happens within one hour after the latest "Truck reached costumer (TRC)"
+#inspect_goods_within_one_hour[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    reached_present[trace_id]
+#    last_inspect := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Inspect goods (IG)"])
+#    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)";time.parse_rfc3339_ns(e.timestamp) < last_inspect]
+#    reached := min(reached_events) # This will be 0 if reached_events is empty
+#    inspect := most_recent_event
+#    time.parse_rfc3339_ns(inspect.timestamp) <= reached + 3600000000000
+#}
+#temporary satisfied condition if the last event is Truck reached costumer (TRC)
 temporary_violated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "ER Sepsis Triage"
+    most_recent_event.concept_name == "Truck reached costumer (TRC)"
 }
 #temporary satisfied condition if the last event is "Inspect goods (IG)" and the difference with the older Truck reached costumer (TRC) is less than one hour
 temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "IV Antibiotics"
+    most_recent_event.concept_name == "Inspect goods (IG)"
     #Get the older Truck reached costumer (TRC) event
-    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"]
+    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"]
     reached := min(reached_events) # This will be 0 if reached_events is empty
     #check if the fime difference is less than one hour
     time.parse_rfc3339_ns(most_recent_event.timestamp) - reached <= 3600000000000
@@ -53,47 +96,209 @@ temporary_satisfied[trace_id] if {
 #Violation condition if the last event is "Inspect goods (IG)" and the difference with the older Truck reached costumer (TRC) is more than one hour
 violations[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "IV Antibiotics"
+    most_recent_event.concept_name == "Inspect goods (IG)"
     #Get the older Truck reached costumer (TRC) event
-    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"]
+    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"]
     reached := min(reached_events) # This will be 0 if reached_events is empty
     #check if the fime difference is less than one hour
     time.parse_rfc3339_ns(most_recent_event.timestamp) - reached > 3600000000000
 }
+
+
 `,
 
-`package lactic_acid_within_onehour
+`package separation_of_duty
 import rego.v1
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
+# Pending condition 1
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
+}
+# Pending condition 1
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
+}
+
+# Violation condition 1
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Fill in container (FC)"
+    same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+}
+
+# Violation condition 2
+violations[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Check container (CC)"
+    same_operator_exists(trace_id, "Check container (CC)", "Fill in container (FC)")
+}
+
+# Satisfied condition, when the trace is over and the constraint is in pending state
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "EOT_EVENT"
+}
+
+# Define a rule to check if the same logistics operator exists for both activities in the same trace
+same_operator_exists(trace_id, activity1, activity2) if {
+    e1 := input.events[_]
+    e1.trace_concept_name == trace_id
+    e1.concept_name == activity1
+    e2 := input.events[_]
+    e2.trace_concept_name == trace_id
+    e2.concept_name == activity2
+    e1.logistics_operator == e2.logistics_operator
+}`,
+
+`package shipment_cost
+import rego.v1
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+## Pending condition
+#pending[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Reserve shipment (RS)"
+#}
+#
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Drive to manufacturer (DM)"
+#    not check_cost_condition[trace_id]
+#}
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Drive to costumer (DC)"
+#    not check_cost_condition[trace_id]
+#}
+#
+## Satisfied condition
+#satisfied[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#	most_recent_event.concept_name == "Order reception confirmed (ORC)"
+#	#This below is not needed, if you are in pending state, the check cost condition is always true if you are in pending state
+#    check_cost_condition[trace_id]
+#}
+
+#Temporary satisfied condition if the last event is "Reserve shipment (RS)" and the cost condition is satisfied
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Shipment reservation sent (SRS)"
+    check_cost_condition(trace_id)
+}
+
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Drive to costumer (DC)"
+    check_cost_condition(trace_id)
+}
+
+temporary_satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "Drive to manufacturer (DM)"
+    check_cost_condition(trace_id)
+}
 
 temporary_violated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "ER Sepsis Triage"
+    most_recent_event.concept_name == "Reserve shipment (RS)"
+    not check_cost_condition(trace_id)
 }
-#temporary satisfied condition if the last event is "LacticAcid" and the difference with the older ER Sepsis Triage is less than one hour
+
+## Define a rule to check the cost condition
+#check_cost_condition[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    reserve_cost := sum([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
+#    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
+#    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
+#    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
+#}
+
+# Define a function to check the cost condition
+check_cost_condition(trace_id) if {
+    reserve_cost := max([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
+    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
+    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
+    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
+}
+
+`,
+
+`package truck_policy
+import rego.v1
+
+# Define the constant for five years in seconds
+five_years_in_seconds := 5 * 365 * 24 * 60 * 60
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+# Temporary satisfied condition if the last event is not "Select truck (ST)"
 temporary_satisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "LacticAcid"
-    #Get the older Truck reached costumer (TRC) event
-    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"]
-    reached := min(reached_events) # This will be 0 if reached_events is empty
-    #check if the fime difference is less than one hour
-    time.parse_rfc3339_ns(most_recent_event.timestamp) - reached <= 10800000000000
+    1==1
 }
-#Violation condition if the last event is "Inspect goods (IG)" and the difference with the older Truck reached costumer (TRC) is more than one hour
+
+# Violation condition
 violations[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "LacticAcid"
-    #Get the older Truck reached costumer (TRC) event
-    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "ER Sepsis Triage"]
-    reached := min(reached_events) # This will be 0 if reached_events is empty
-    #check if the fime difference is less than one hour
-    time.parse_rfc3339_ns(most_recent_event.timestamp) - reached > 10800000000000
+    most_recent_event.concept_name == "Select truck (ST)"
+    driver_experience_within_five_years[trace_id]
 }
-`,
+
+# Satisfied condition
+satisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "EOT_EVENT"
+}
+
+# Define a rule to check if the driver's experience is within five years
+driver_experience_within_five_years[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    event := most_recent_event
+    (time.parse_rfc3339_ns(event.timestamp) / 1000000000) - (time.parse_rfc3339_ns(event.license_first_issue) / 1000000000) <= five_years_in_seconds
+}
+
+
+#
+## Pending condition
+#pending[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    most_recent_event.concept_name == "Select truck (ST)"
+#}
+#
+## Violation condition
+#violations[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    #Not needed
+#    #most_recent_event.concept_name == "Select truck (ST)"
+#    driver_experience_within_five_years[trace_id]
+#}
+#
+## Satisfied condition
+#satisfied[trace_id] if {
+#    trace_id := most_recent_event.trace_concept_name
+#    #Not needed
+#    #most_recent_event.concept_name == "Select truck (ST)"
+#    not driver_experience_within_five_years[trace_id]
+#}
+#
+## Define a rule to check if the driver's experience is within five years
+driver_experience_within_five_years[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    event := most_recent_event
+    (time.parse_rfc3339_ns(event.timestamp) / 1000000000) - (time.parse_rfc3339_ns(event.license_first_issue) / 1000000000) <= five_years_in_seconds
+}
+
+#Temporary satisfied condition if the last event is not "Select truck (ST)"`,
 
 }
 
@@ -244,7 +449,7 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 
 var fsmMap = map[string]*CustomFSM{
 
-"iv_antibiotics_within_onehour": {
+"inspect_goods_within_onehour": {
     Transitions: [][]int{
         {5},
         {},
@@ -255,14 +460,36 @@ var fsmMap = map[string]*CustomFSM{
     },
 },
 
-"lactic_acid_within_onehour": {
+"separation_of_duty": {
     Transitions: [][]int{
+        {4},
+        {},
+        {},
+        {},
+        {2, 3},
+        {},
+    },
+},
+
+"shipment_cost": {
+    Transitions: [][]int{
+        {4, 5},
+        {},
+        {},
+        {},
         {5},
+        {4},
+    },
+},
+
+"truck_policy": {
+    Transitions: [][]int{
+        {4, 2, 3},
         {},
         {},
         {},
-        {2},
-        {2, 4},
+        {2, 3},
+        {},
     },
 },
 

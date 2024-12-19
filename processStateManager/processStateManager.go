@@ -6,6 +6,7 @@ import (
 	"github.com/edgelesssys/ego/ecrypto"
 	"log"
 	"main/complianceCheckingLogic"
+	"main/utils/petrinet"
 	"main/utils/xes"
 	"main/workflowLogic"
 	"math"
@@ -188,8 +189,27 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 		addEventFlag = true
 	}
-	//Check if the event is in the workflow logic
-	if psm.WorkflowLogic.GetTransitionIndicesByName(eventId) != nil {
+	//TODO Add here a check if the event is the last event marker
+	//Check if the event is the last event marker
+	if eventId == "__END__" {
+		//Get the token of the current case
+		tokenId := psm.ProcessState.WfState.CaseTokenId[caseId]
+		//Get the index of the sink place
+		_, indexOfSink := psm.WorkflowLogic.GetSourceAndSinkIndices()
+		// Check if the sink place has the token tokenId
+		if petrinet.ContainsTokenId(psm.WorkflowLogic.Petrinet.TokenIds[indexOfSink], tokenId) {
+			// Set the status of the case to success
+			psm.ProcessState.WfState.WorkflowStatus[caseId] = 3
+			fmt.Println("Case: ", caseId, " has completed successfully")
+		} else {
+			// Set the status of the case to violated
+			psm.ProcessState.WfState.WorkflowStatus[caseId] = 2
+			fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
+
+		}
+	}
+	//Check if the event is in the workflow logic transitions
+	if len(psm.WorkflowLogic.GetTransitionIndicesByName(eventId)) != 0 {
 		//Check if the case is already in the process state
 		if !psm.ProcessState.Cases[caseId] {
 			//If the case is not in the process state, initialize a new case
@@ -214,9 +234,11 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 			} else {
 				//If the transition was successful, update the workflow state
 				psm.updateWorkflowState(caseId)
-				//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
+				fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
 			}
 		}
+		//TODO: ADD HERE THE WORKFLOW UDPATE EXTERNALIZATION
+
 	}
 	//fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
 	elaboratedLog := map[string][]map[string]interface{}{}

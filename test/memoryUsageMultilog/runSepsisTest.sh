@@ -22,12 +22,13 @@ run_event_stream_generator(){
 
 # Trap SIGINT to terminate background processes
 trap 'kill $(jobs -p); exit' SIGINT
+kill -9 $(lsof -t -i:6066)
 
 run_process_state_agent &
 sleep 2
 
 run_process_vault &
-sleep 5
+sleep 3
 
 run_event_stream_generator &
 

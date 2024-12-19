@@ -182,7 +182,7 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 				data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
 				_, _ = file.WriteString(data)
 				// Also print to the console
-				fmt.Printf("%s - Memory Usage: %d MiB", currentTime, alloc)
+				//fmt.Printf("%s - Memory Usage: %d MiB", currentTime, alloc)
 			}
 		}
 	}

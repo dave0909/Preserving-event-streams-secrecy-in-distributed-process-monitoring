@@ -21,8 +21,8 @@ def create_final_event_xml_string(trace):
     trace_name = trace.attributes["concept:name"] if "concept:name" in trace.attributes else "case_unknown"
     event_xml = f"<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version=\"1.0RC7\" xes.features=\"nested-attributes\" xes.version=\"1.0\" xmlns=\"http://www.xes-standard.org/\">"
     event_xml += f"<trace><string key=\"concept:name\" value=\"{trace_name}\"/><event>"
-    event_xml += "<event><string key=\"concept:name\" value=\"EOT_EVENT\"/><date key=\"time:timestamp\" value=\"2014-05-19T20:05:46.000+02:00\"/></event>"
-    event_xml += "</event></trace></log></org.deckfour.xes.model.impl.XTraceImpl>\n"
+    event_xml += "<string key=\"concept:name\" value=\"__END__\"/><date key=\"time:timestamp\" value=\"2014-05-19T20:05:46.000+02:00\"/></event>"
+    event_xml += "</trace></log></org.deckfour.xes.model.impl.XTraceImpl>\n"
     return event_xml
 
 def create_event_xml_string(trace, event):
@@ -59,6 +59,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
                     event_string = create_event_xml_string(trace, event)
                     client_socket.sendall(event_string.encode())
                     time.sleep(0.01)
+                final_event_string = create_final_event_xml_string(trace)
+                client_socket.sendall(final_event_string.encode())
+                time.sleep(0.01)
         except Exception as e:
             print(f"An error occurred: {e}")
             client_socket.close()
