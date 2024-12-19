@@ -137,7 +137,6 @@ func (ed *EventDispatcher) SubscribeTo(address string) {
 	if reply == "subscription denied" {
 		log.Fatalf("Subscription failed: %v", reply)
 	} else {
-
 		//parse the response into a subscription object
 		subscription := attestation.Subscription{}
 		err = json.Unmarshal([]byte(reply), &subscription)

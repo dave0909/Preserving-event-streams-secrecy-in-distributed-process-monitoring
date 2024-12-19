@@ -154,7 +154,6 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 		log.Fatalf("Failed to open file: %v", err)
 	}
 	defer file.Close()
-
 	// Write the header only if the file is empty
 	fileInfo, err := file.Stat()
 	if err != nil {
@@ -163,10 +162,8 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 	if fileInfo.Size() == 0 {
 		_, _ = file.WriteString("Timestamp,Memory Usage\n")
 	}
-
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-
 	for {
 		if psm.FirstInit {
 			if psm.TotalCounter == nEvents {
@@ -178,19 +175,16 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 				// Capture memory statistics
 				var m runtime.MemStats
 				runtime.ReadMemStats(&m)
-
 				// Format memory stats
 				currentTime := time.Now().Unix()
 				alloc := m.HeapAlloc
 				// Write to file
 				data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
 				_, _ = file.WriteString(data)
-
 				// Also print to the console
 				fmt.Printf("%s - Memory Usage: %d MiB", currentTime, alloc)
 			}
 		}
-
 	}
 	fmt.Println("End of the test after ", nEvents, "events")
 }

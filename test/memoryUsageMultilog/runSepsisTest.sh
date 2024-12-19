@@ -9,7 +9,7 @@ run_process_state_agent() {
 run_process_vault() {
     # Change to the directory where the main executable is located
     cd ../..
-    python3 pv3.py ./data/BPMN/sepsis.bpmn ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 ./data/input/extraction_manifest_sepsis.json false true 15200 false 150
+    python3 pv3.py ./data/PNML/sepsis.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/sepsisConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 ./data/input/extraction_manifest_sepsis.json false true 15200 false 150
     # Change back to the original directory
     cd -
 }
@@ -23,13 +23,14 @@ run_event_stream_generator(){
 # Trap SIGINT to terminate background processes
 trap 'kill $(jobs -p); exit' SIGINT
 
-run_event_stream_generator &
-sleep 3
+run_process_state_agent &
+sleep 2
 
 run_process_vault &
-sleep 3
+sleep 5
 
-run_process_state_agent
+run_event_stream_generator &
 
 # Wait for all background processes to finish
 wait
+

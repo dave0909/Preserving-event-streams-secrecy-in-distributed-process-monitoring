@@ -264,7 +264,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 
 func recordDataDuration(durationFromStart time.Duration, psm *ProcessStateManager, stdDev float64) {
 	// Ensure the directory exists
-	outputDir := "data/output"
+	outputDir := "./data/output"
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 		log.Fatalf("Error creating directory: %v", err)
 	}
