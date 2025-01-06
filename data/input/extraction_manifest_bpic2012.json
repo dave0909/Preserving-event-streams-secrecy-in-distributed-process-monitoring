@@ -1,0 +1,16 @@
+{
+  "activity_name": "concept:name",
+  "activity_timestamp": "time:timestamp",
+  "case_id": "concept:name",
+  "attribute_extraction": {
+    "W_Afhandelen leads": ["lifecycle:transition"],
+    "W_Beoordelen fraude": ["lifecycle:transition"],
+    "W_Wijzigen contractgegevens": ["lifecycle:transition"],
+    "O_CREATED": [],
+    "A_ACTIVATED": [],
+    "A_CANCELLED": [],
+    "A_DECLINED": [],
+    "A_REGISTERED": [],
+    "A_SUBMITTED": []
+  }
+}

@@ -16,3 +16,9 @@ transitions:
   - from: TemporaryViolated
     to: TemporarySatisfied
     event: TemporarySatisfied
+  - from: TemporarySatisfied
+    to: Satisfied
+    event: Satisfied
+  - from: TemporaryViolated
+    to: Violated
+    event: Violated

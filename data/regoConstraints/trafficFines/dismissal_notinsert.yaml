@@ -10,3 +10,6 @@ transitions:
   - from: TemporarySatisfied
     to: Violated
     event: Violated
+  - from: TemporarySatisfied
+    to: Satisfied
+    event: Satisfied

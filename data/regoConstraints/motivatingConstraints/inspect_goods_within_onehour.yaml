@@ -17,3 +17,10 @@ transitions:
   - from: TemporaryViolated # TemporaryViolated to Satisfied
     to: TemporarySatisfied
     event: TemporarySatisfied
+  - from: TemporaryViolated # TemporaryViolated to Satisfied
+    to: Violated
+    event: Violated
+  - from: TemporarySatisfied # TemporaryViolated to Satisfied
+    to: Satisfied
+    event: Satisfied
+

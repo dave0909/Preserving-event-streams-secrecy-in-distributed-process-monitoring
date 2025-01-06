@@ -23,3 +23,6 @@ transitions:
   - from: TemporaryViolated
     to: Satisfied
     event: Satisfied
+  - from: TemporaryViolated
+    to: Violated
+    event: Violated

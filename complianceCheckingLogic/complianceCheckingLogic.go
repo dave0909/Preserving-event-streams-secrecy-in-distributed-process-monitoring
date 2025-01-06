@@ -26,279 +26,748 @@ type CustomFSM struct {
 // Generated process constraints code
 
 var constraintNames = []string{
-"inspect_goods_within_onehour", "separation_of_duty", "shipment_cost", "truck_policy"}
+"R17", "R18", "R19", "R20", "R21", "R22", "R23", "R24", "R25", "R26", "R27", "R28"}
 
 var constraints = []string{
 
-`package inspect_goods_within_onehour
+`package R17
 import rego.v1
+#Description: "A_PARTLYSUBMITTED-complete" occouurs exactly once in the trace
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-## Define a rule to check if the most recent event is "IV Antibiotics"
-#reached_present[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    count({e | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"}) > 0
-#}
-#
-## Pending condition
-#pending[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Truck reached costumer (TRC)"
-#}
-#
-## Violation condition
-#violations[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Inspect goods (IG)"
-#    not inspect_goods_within_one_hour[trace_id]
-#}
-#
-## Violation condition, when the trace is over and the constraint is in pending state
-#violations[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Order reception confirmed (ORC)"
-#}
-#
-## Satisfied condition, when I receive an inspect goods activity and the constraint is in pending state
-#satisfied[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Inspect goods (IG)"
-#    inspect_goods_within_one_hour[trace_id]
-#}
-#
-## Define a rule to check if "Inspect goods (IG)" happens within one hour after the latest "Truck reached costumer (TRC)"
-#inspect_goods_within_one_hour[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    reached_present[trace_id]
-#    last_inspect := max([time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Inspect goods (IG)"])
-#    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)";time.parse_rfc3339_ns(e.timestamp) < last_inspect]
-#    reached := min(reached_events) # This will be 0 if reached_events is empty
-#    inspect := most_recent_event
-#    time.parse_rfc3339_ns(inspect.timestamp) <= reached + 3600000000000
-#}
-#temporary satisfied condition if the last event is Truck reached costumer (TRC)
-temporary_violated[trace_id] if {
+# InitToTemporaryViolated if the last event is "A_PARTLYSUBMITTED"
+InitToTemporaryViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Truck reached costumer (TRC)"
-}
-#temporary satisfied condition if the last event is "Inspect goods (IG)" and the difference with the older Truck reached costumer (TRC) is less than one hour
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Inspect goods (IG)"
-    #Get the older Truck reached costumer (TRC) event
-    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"]
-    reached := min(reached_events) # This will be 0 if reached_events is empty
-    #check if the fime difference is less than one hour
-    time.parse_rfc3339_ns(most_recent_event.timestamp) - reached <= 3600000000000
-}
-#Violation condition if the last event is "Inspect goods (IG)" and the difference with the older Truck reached costumer (TRC) is more than one hour
-violations[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Inspect goods (IG)"
-    #Get the older Truck reached costumer (TRC) event
-    reached_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Truck reached costumer (TRC)"]
-    reached := min(reached_events) # This will be 0 if reached_events is empty
-    #check if the fime difference is less than one hour
-    time.parse_rfc3339_ns(most_recent_event.timestamp) - reached > 3600000000000
+    most_recent_event.concept_name != "A_PARTLYSUBMITTED"
 }
 
+#InitToTemporarySatisfied if the last event is "A_PARTLYSUBMITTED"
+InitToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
 
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
 `,
 
-`package separation_of_duty
+`package R18
+
 import rego.v1
+
+#Description: "A_SUBMITTED"-COMPLETE occurs exactly once in the traces
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-# Pending condition 1
-temporary_satisfied[trace_id] if {
+# InitToTemporaryViolated if the last event is "A_SUBMITTED"
+InitToTemporaryViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Fill in container (FC)"
-}
-# Pending condition 1
-temporary_satisfied[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Fill in container (FC)"
+    most_recent_event.concept_name != "A_SUBMITTED"
 }
 
-# Violation condition 1
-violations[trace_id] if {
+#InitToTemporarySatisfied if the last event is "A_SUBMITTED"
+InitToTemporarySatisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Fill in container (FC)"
-    same_operator_exists(trace_id, "Fill in container (FC)", "Check container (CC)")
+    most_recent_event.concept_name == "A_SUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
 }
 
-# Violation condition 2
-violations[trace_id] if {
+TemporarySatisfiedToViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Check container (CC)"
-    same_operator_exists(trace_id, "Check container (CC)", "Fill in container (FC)")
+    most_recent_event.concept_name == "A_SUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
 }
 
-# Satisfied condition, when the trace is over and the constraint is in pending state
-satisfied[trace_id] if {
+TemporarySatisfiedToSatisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "EOT_EVENT"
+    most_recent_event.concept_name == "__END__"
 }
 
-# Define a rule to check if the same logistics operator exists for both activities in the same trace
-same_operator_exists(trace_id, activity1, activity2) if {
-    e1 := input.events[_]
-    e1.trace_concept_name == trace_id
-    e1.concept_name == activity1
-    e2 := input.events[_]
-    e2.trace_concept_name == trace_id
-    e2.concept_name == activity2
-    e1.logistics_operator == e2.logistics_operator
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_SUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
 }`,
 
-`package shipment_cost
+`package R19
 import rego.v1
+#Description: "A_SUBMITTED"-COMPLETE is always immediately followed by "A_PARTLYSUBMITTED" and vice versa
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-## Pending condition
-#pending[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Reserve shipment (RS)"
-#}
-#
-## Violation condition
-#violations[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Drive to manufacturer (DM)"
-#    not check_cost_condition[trace_id]
-#}
-## Violation condition
-#violations[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Drive to costumer (DC)"
-#    not check_cost_condition[trace_id]
-#}
-#
-## Satisfied condition
-#satisfied[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#	most_recent_event.concept_name == "Order reception confirmed (ORC)"
-#	#This below is not needed, if you are in pending state, the check cost condition is always true if you are in pending state
-#    check_cost_condition[trace_id]
-#}
-
-#Temporary satisfied condition if the last event is "Reserve shipment (RS)" and the cost condition is satisfied
-temporary_satisfied[trace_id] if {
+# InitToTemporaryViolated if the last event is "A_SUBMITTED"
+InitToTemporaryViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Shipment reservation sent (SRS)"
-    check_cost_condition(trace_id)
+    most_recent_event.concept_name == "A_SUBMITTED"
+    #Life cycle transition is "COMPLETE"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
 }
-
-temporary_satisfied[trace_id] if {
+# InitToViolated if the last event is "A_PARTLYSUBMITTED"
+InitToViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Drive to costumer (DC)"
-    check_cost_condition(trace_id)
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
 }
 
-temporary_satisfied[trace_id] if {
+#InitToTemporarySatisfied if the last event is anything other than "A_SUBMITTED" or "A_PARTLYSUBMITTED"
+InitToTemporarySatisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Drive to manufacturer (DM)"
-    check_cost_condition(trace_id)
+    most_recent_event.concept_name != "A_SUBMITTED"
+    most_recent_event.concept_name != "A_PARTLYSUBMITTED"
 }
 
-temporary_violated[trace_id] if {
+#TemporaryViolatedToViolated if the last event is any event other than "A_PARTLYSUBMITTED"
+TemporaryViolatedToViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Reserve shipment (RS)"
-    not check_cost_condition(trace_id)
+    most_recent_event.concept_name != "A_PARTLYSUBMITTED"
 }
 
-## Define a rule to check the cost condition
-#check_cost_condition[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    reserve_cost := sum([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
-#    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
-#    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
-#    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
-#}
-
-# Define a function to check the cost condition
-check_cost_condition(trace_id) if {
-    reserve_cost := max([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Reserve shipment (RS)"])
-    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
-    drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
-    reserve_cost <= (drive_distance_i + drive_distance_m) * 3
+#TemporaryViolatedToViolated is the last event is __END__
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
 }
+#TemporaryViolatedToTemporarySatisfied if the last event is "A_PARTLYSUBMITTED" and lifecycle transition is "COMPLETE"
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+#TemporarySatisfiedToViolated if the last event is __END__
+TemporarySatifiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+#TemporarySatisfiedToTemporaryViolated if the last event is "A_SUBMITTED" and lifecycle transition is "COMPLETE"
+TemporarySatifiedToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_SUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"}
+`,
+
+`package R20
+import rego.v1
+#Description: "A_SUBMITTED"-COMPLETE and "A_PARTLYSUBMITTED"-COMPLETE are always the firts two events of the trace
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+#InitToViolated if the last event is not "A_SUBMITTED"
+InitToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name != "A_SUBMITTED"
+}
+
+InitToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    #Life cycle transition is not "COMPLETE"
+    most_recent_event["lifecycle:transition"] != "COMPLETE"
+}
+
+#InitToTemporaryViolated if the last event is "A_SUBMITTED"
+InitToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_SUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    }
+
+#TemporaryViolatedToViolated if the last event is not "A_PARTLYSUBMITTED"
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name != "A_PARTLYSUBMITTED"
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event["lifecycle:transition"] != "COMPLETE"
+}
+
+TemporaryViolatedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+`,
+
+`package R21
+
+import rego.v1
+
+#Description: Lifecycle : W_Afhandelen leads - SCHEDULE --> W_Afhandelen leads - START --> W_Afhandelen leads - COMPLETE is always respected
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+InitToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Afhandelen leads"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+
+InitToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Afhandelen leads"
+    most_recent_event["lifecycle:transition"] != "SCHEDULE"
+}
+
+InitToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Afhandelen leads"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Check if W_Afhandelen leads - START is present
+    checkStart(trace_id)
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Afhandelen leads"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Check if W_Afhandelen leads - START is present
+    not checkStart(trace_id)
+}
+TemporarySatisfiedToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Afhandelen leads"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+#Function that checks if W_Afhandelen leads - SCHEDULE is present for the same trace
+checkStart(trace_id) if {
+    input.events[_].concept_name == "W_Afhandelen leads"
+    input.events[_]["lifecycle:transition"] == "START"
+    input.events[_].trace_concept_name == trace_id
+}
+`,
+
+`package R22
+import rego.v1
+
+
+#Description: W_Completeren aanvraag - SCHEDULE is always followed eventually by W_Completeren aanvraag - COMPLETE and vice versa
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+InitToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+
+InitToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+InitToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+TemporarySatisfiedToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}`,
+
+`package R23
+
+import rego.v1
+
+#Description: The lifecycle “W_Beoordelen fraude-schedule”,
+              #“W_Beoordelen fraude-start”, “W_Beoordelen
+              #fraude-complete” is always respected;
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+InitToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Beoordelen fraude"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+
+InitToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Beoordelen fraude"
+    most_recent_event["lifecycle:transition"] != "SCHEDULE"
+}
+
+InitToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Beoordelen fraude"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Check if W_Beoordelen fraude - START is present
+    checkStart(trace_id)
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Beoordelen fraude"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Check if W_Beoordelen fraude - START is present
+    not checkStart(trace_id)
+}
+TemporarySatisfiedToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Beoordelen fraude"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+#Function that checks if W_Beoordelen fraude - SCHEDULE is present for the same trace
+checkStart(trace_id) if {
+    input.events[_].concept_name == "W_Beoordelen fraude"
+    input.events[_]["lifecycle:transition"] == "START"
+    input.events[_].trace_concept_name == trace_id
+}`,
+
+`package R24
+
+import rego.v1
+
+#Description: “O_SELECTED-complete” is always followed eventually
+              #by “O_CREATED-complete”, “O_CREATED-complete” is
+              #always followed eventually by “O_SENT-complete”
+              #and, vice versa, “O_SENT-complete” is always preceded
+              #by “O_CREATED-complete” and “O_CREATED-com-plete”
+              #is always preceded by “O_SELECTED-complete”
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+#InitToSatisfied if the last event is __END__
+InitToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+InitToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "O_SELECTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+#TemporaryViolatedToViolated if the last event is __END__
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+#TemporaryViolatedToTemporarySatisfied if O_SENT-complete is the last event and O_CREATED-complete is present for the given trace
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "O_SENT"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    checkCreated(trace_id)
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "O_SENT"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    not checkCreated(trace_id)
+}
+
+checkCreated(trace_id) if {
+    input.events[_].concept_name == "O_CREATED"
+    input.events[_]["lifecycle:transition"] == "COMPLETE"
+    input.events[_].trace_concept_name == trace_id
+}
+
+TemporarySatisfiedToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "O_SELECTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}`,
+
+`package R25
+
+import rego.v1
+
+#Description: “A_CANCELLED-complete” does not coexist neither
+              #with “A_ACTIVATED-complete” nor with “A_REGIS-
+              #TERED-complete” nor with “A_APPROVED-complete”
+
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+#Define the set of the events that cannot coexist with A_CANCELLED-complete
+cannot_coexist := {"A_ACTIVATED", "A_REGISTERED", "A_APPROVED"}
+
+InitToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+InitToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_CANCELLED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+InitToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_CANCELLED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+InitToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    #Check if the event name is in the set of the events that cannot coexist with A_CANCELLED-complete
+    most_recent_event.concept_name == cannot_coexist[_]
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+}
+
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_CANCELLED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Check if one of the events that cannot coexist with A_CANCELLED-complete is present for the same trace
+    checkCannotCoexist(trace_id)
+}
+
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == cannot_coexist[_]
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Check if A_CANCELLED-complete is present for the same trace
+    checkCancelled(trace_id)
+}
+checkCannotCoexist(trace_id) if {
+    input.events[_].concept_name == cannot_coexist[_]
+    input.events[_]["lifecycle:transition"] == "COMPLETE"
+    input.events[_].trace_concept_name == trace_id
+}
+checkCancelled(trace_id) if {
+    input.events[_].concept_name == "A_CANCELLED"
+    input.events[_]["lifecycle:transition"] == "COMPLETE"
+    input.events[_].trace_concept_name == trace_id
+}
+
+
 
 `,
 
-`package truck_policy
+`package R26
 import rego.v1
 
-# Define the constant for five years in seconds
-five_years_in_seconds := 5 * 365 * 24 * 60 * 60
+#Description: W_Beoordelen fraude-schedule” does not coexist
+              #with “W_Wijzigen contractgegevens-schedule”
 
 # Get the most recent event
 most_recent_event := input.events[count(input.events) - 1]
 
-# Temporary satisfied condition if the last event is not "Select truck (ST)"
-temporary_satisfied[trace_id] if {
+InitToSatisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    1==1
+    most_recent_event.concept_name == "__END__"
 }
 
-# Violation condition
-violations[trace_id] if {
+InitToTemporarySatisfied[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "Select truck (ST)"
-    driver_experience_within_five_years[trace_id]
+    most_recent_event.concept_name == "W_Beoordelen fraude"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+    }
+InitToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Wijzigen contractgegevens"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Beoordelen fraude"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+    checkWijzigen(trace_id)
+    }
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Wijzigen contractgegevens"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+    checkFraude(trace_id)
+
+}
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+checkWijzigen(trace_id) if {
+    input.events[_].concept_name == "W_Wijzigen contractgegevens"
+    input.events[_]["lifecycle:transition"] == "SCHEDULE"
+    input.events[_].trace_concept_name == trace_id
+}
+checkFraude(trace_id) if {
+    input.events[_].concept_name == "W_Beoordelen fraude"
+    input.events[_]["lifecycle:transition"] == "SCHEDULE"
+    input.events[_].trace_concept_name == trace_id
+}
+`,
+
+`package R27
+import rego.v1
+
+#Description: “A_PARTLYSUBMITTED-complete” occurs at most 22 s
+              #after “A_SUBMITTED-complete”;
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+
+#InitToSatisfied if the last event is __END__
+InitToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
 }
 
-# Satisfied condition
-satisfied[trace_id] if {
+#InitToTemporarySatisfied if the last event is A_SUBMITTED-complete
+InitToTemporaryViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    most_recent_event.concept_name == "EOT_EVENT"
+    most_recent_event.concept_name == "A_SUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
 }
 
-# Define a rule to check if the driver's experience is within five years
-driver_experience_within_five_years[trace_id] if {
+#TemporarySatisfiedToViolated if the last event is A_PARTLYSUBMITTED-complete and the difference with the older A_SUBMITTED-complete is more than 22 seconds
+TemporaryViolatedToViolated[trace_id] if {
     trace_id := most_recent_event.trace_concept_name
-    event := most_recent_event
-    (time.parse_rfc3339_ns(event.timestamp) / 1000000000) - (time.parse_rfc3339_ns(event.license_first_issue) / 1000000000) <= five_years_in_seconds
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Get the older A_SUBMITTED-complete event
+    submitted_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "A_SUBMITTED";e["lifecycle:transition"] == "COMPLETE"]
+    submitted := min(submitted_events) # This will be 0 if submitted_events is empty
+    #check if the time difference is more than 22 seconds
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - submitted > 22000000000
+}
+
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+    #Check if exists an A_PARTLYSUBMITTED-complete event for the same trace
+    checkPartlySubmitted(trace_id)
+}
+
+#TemporarySatisfiedToSatisfied  if the last event is __END__
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+    #Check if exists an A_PARTLYSUBMITTED-complete event for the same trace
+    checkPartlySubmitted(trace_id)
+}
+
+#TemporaryViolatedToTemporarySatisfied if the last event is A_PARTLYSUBMITTED-complete and the difference with the older A_SUBMITTED-complete is less than 22 seconds
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Get the older A_SUBMITTED-complete event
+    submitted_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "A_SUBMITTED";e["lifecycle:transition"] == "COMPLETE"]
+    submitted := min(submitted_events) # This will be 0 if submitted_events is empty
+    #check if the time difference is less than 22 seconds
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - submitted <= 22000000000
+    }
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "A_PARTLYSUBMITTED"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Get the older A_SUBMITTED-complete event
+    submitted_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "A_SUBMITTED";e["lifecycle:transition"] == "COMPLETE"]
+    submitted := min(submitted_events) # This will be 0 if submitted_events is empty
+    #check if the time difference is more than 22 seconds
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - submitted > 22000000000
+}
+
+checkPartlySubmitted(trace_id) if {
+    input.events[_].concept_name == "A_PARTLYSUBMITTED"
+    input.events[_]["lifecycle:transition"] == "COMPLETE"
+    input.events[_].trace_concept_name == trace_id
+}
+`,
+
+`package R28
+import rego.v1
+
+# Get the most recent event
+most_recent_event := input.events[count(input.events) - 1]
+#Description: “W_Completeren aanvraag-complete” occurs at least
+              #22 s and at most 2 days, 18 h, 29 min, and 28 s after
+              #“W_Completeren aanvraag-schedule”
+
+#InitToSatisfied if the last event is __END__
+InitToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+#InitToTemporaryViolated if the last event is W_Completeren aanvraag-schedule
+InitToTemporaryViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "SCHEDULE"
+}
+
+#TemporaryViolatedToViolated if the last event is W_Completeren aanvraag-complete and the difference with the older W_Completeren aanvraag-schedule is more than 2 days, 18 h, 29 min, and 28 s
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Get the older W_Completeren aanvraag-schedule event
+    schedule_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "W_Completeren aanvraag";e["lifecycle:transition"] == "SCHEDULE"]
+    schedule := min(schedule_events) # This will be 0 if schedule_events is empty
+    #check if the time difference is more than 2 days, 18 h, 29 min, and 28 s
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule > 239368000000000
+    #check if the time difference is less than 22 s
+    #time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule < 22000000000
+}
+#TemporaryViolatedToViolated if the last event is W_Completeren aanvraag-complete and the difference with the older W_Completeren aanvraag-schedule is more than 2 days, 18 h, 29 min, and 28 s
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Get the older W_Completeren aanvraag-schedule event
+    schedule_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "W_Completeren aanvraag";e["lifecycle:transition"] == "SCHEDULE"]
+    schedule := min(schedule_events) # This will be 0 if schedule_events is empty
+    #check if the time difference is more than 2 days, 18 h, 29 min, and 28 s
+    #time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule > 239368000000000
+    #check if the time difference is less than 22 s
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule < 22000000000
+}
+#TemporaryViolatedToViolated if the last event is W_Completeren aanvraag-complete and the difference with the older W_Completeren aanvraag-schedule is more than 2 days, 18 h, 29 min, and 28 s
+TemporaryViolatedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
+}
+
+#TemporaryViolatedToSatisfied if the last event is W_Completeren aanvraag-complete and the difference with the older W_Completeren aanvraag-schedule is less than 2 days, 18 h, 29 min, and 28 s and more than 22 s
+TemporaryViolatedToTemporarySatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    #Get the older W_Completeren aanvraag-schedule event
+    schedule_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "W_Completeren aanvraag";e["lifecycle:transition"] == "SCHEDULE"]
+    schedule := min(schedule_events) # This will be 0 if schedule_events is empty
+    #check if the time difference is more than 22 s
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule >= 22000000000
+    #check if the time difference is less than 2 days, 18 h, 29 min, and 28 s
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule <= 239368000000000
+}
+
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Get the older W_Completeren aanvraag-schedule event
+    schedule_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "W_Completeren aanvraag";e["lifecycle:transition"] == "SCHEDULE"]
+    schedule := min(schedule_events) # This will be 0 if schedule_events is empty
+    #check if the time difference is more than 2 days, 18 h, 29 min, and 28 s
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule > 239368000000000
+    #check if the time difference is less than 2 days, 18 h, 29 min, and 28 s
+    #time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule < 22000000000
+}
+TemporarySatisfiedToViolated[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "W_Completeren aanvraag"
+    most_recent_event["lifecycle:transition"] == "COMPLETE"
+    #Get the older W_Completeren aanvraag-schedule event
+    schedule_events := [time.parse_rfc3339_ns(e.timestamp) | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "W_Completeren aanvraag";e["lifecycle:transition"] == "SCHEDULE"]
+    schedule := min(schedule_events) # This will be 0 if schedule_events is empty
+    #check if the time difference is more than 2 days, 18 h, 29 min, and 28 s
+    #time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule > 239368000000000
+    #check if the time difference is less than 2 days, 18 h, 29 min, and 28 s
+    time.parse_rfc3339_ns(most_recent_event.timestamp) - schedule < 22000000000
+}
+
+#TemporarySatisfiedToSatisfied condition if the last event is __END__
+TemporarySatisfiedToSatisfied[trace_id] if {
+    trace_id := most_recent_event.trace_concept_name
+    most_recent_event.concept_name == "__END__"
 }
 
 
-#
-## Pending condition
-#pending[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    most_recent_event.concept_name == "Select truck (ST)"
-#}
-#
-## Violation condition
-#violations[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    #Not needed
-#    #most_recent_event.concept_name == "Select truck (ST)"
-#    driver_experience_within_five_years[trace_id]
-#}
-#
-## Satisfied condition
-#satisfied[trace_id] if {
-#    trace_id := most_recent_event.trace_concept_name
-#    #Not needed
-#    #most_recent_event.concept_name == "Select truck (ST)"
-#    not driver_experience_within_five_years[trace_id]
-#}
-#
-## Define a rule to check if the driver's experience is within five years
-driver_experience_within_five_years[trace_id] if {
-    trace_id := most_recent_event.trace_concept_name
-    event := most_recent_event
-    (time.parse_rfc3339_ns(event.timestamp) / 1000000000) - (time.parse_rfc3339_ns(event.license_first_issue) / 1000000000) <= five_years_in_seconds
-}
 
-#Temporary satisfied condition if the last event is not "Select truck (ST)"`,
+`,
 
 }
 
@@ -317,6 +786,7 @@ func (fsm *CustomFSM) HasTransition(s1, s2 int) bool {
 	}
 	return false
 }
+
 type Constraint struct {
 	name              string
 	preparedEvalQuery rego.PreparedEvalQuery
@@ -361,135 +831,214 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 	traceId := lastEvent["trace_concept_name"].(string)
 	for _, constraint := range ccl.preparedConstraints {
 		if _, ok := constraint.ConstraintState[traceId]; !ok {
-			constraint.ConstraintState[traceId] = Init //Init state
+			constraint.ConstraintState[traceId] = Init // Init state
 		}
 	}
 	resultMap := map[string]interface{}{}
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-    evInputLog:=rego.EvalInput(eventLog)
-    for _, constraint := range ccl.preparedConstraints {
-        wg.Add(1)
-        go func(constraint Constraint, evInputLog rego.EvalOption) {
-            defer wg.Done()
-            res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, evInputLog)
-            if err != nil {
-                fmt.Println(err)
-                return
-            }
-            mu.Lock()
-            defer mu.Unlock()
-            for constraintName := range constraint.preparedEvalQuery.Modules() {
-                resultValue := res[0].Expressions[0].Value
-                resultValueMap, ok := resultValue.(map[string]interface{})
-                if !ok {
-                    fmt.Println(res)
-                    log.Fatalf("Failed to convert result from policy inspection")
-                }
-                //currentState := constraint.ConstraintState[traceId]
-                //nextStates := constraint.fsm.PossibleNextStates(int(currentState))
-                violations, ok := resultValueMap["violations"].(map[string]interface{})
-                if !ok {
-                }
-                pending, ok := resultValueMap["pending"].(map[string]interface{})
-                if !ok {
-                }
-                satisfied, ok := resultValueMap["satisfied"].(map[string]interface{})
-                if !ok {
-                }
-                temporarySatisfied, ok := resultValueMap["temporary_satisfied"].(map[string]interface{})
-                if !ok {
-                }
-                temporaryViolated, ok := resultValueMap["temporary_violated"].(map[string]interface{})
-                if !ok {
-                }
-                for caseId := range pending {
-                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 1) {
-                        constraint.ConstraintState[caseId] = Pending
-                        fmt.Println("Constraint ", constraintName, "in pending state for case ", caseId)
-                        resultMap[traceId] = Pending
-                    }
-                }
-                for caseId := range temporarySatisfied {
-                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 4) {
-                        constraint.ConstraintState[caseId] = TemporarySatisfied
-                        fmt.Println("Constraint ", constraintName, "in temporary satisfied state for case ", caseId)
-                        resultMap[traceId] = TemporarySatisfied
+	for _, constraint := range ccl.preparedConstraints {
+		wg.Add(1)
+		go func(constraint Constraint) {
+			defer wg.Done()
+			res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			//currentState := constraint.ConstraintState[traceId]
+			//if constraint.name == "truck_policy" {
+			//	fmt.Println(res)
+			//}
+			for {
+				transitionFound := false
+				currentState := constraint.ConstraintState[traceId]
+				for _, nextState := range constraint.fsm.PossibleNextStates(int(currentState)) {
+					currentState := constraint.ConstraintState[traceId]
+					ruleName := fmt.Sprintf("%sTo%s", stateName(currentState), stateName(ConstraintState(nextState)))
+					if resultValue, ok := res[0].Expressions[0].Value.(map[string]interface{})[ruleName]; ok {
+						//if constraint.name == "shipment_cost" {
+						//	fmt.Println("Constraint name: ", constraint.name, "in state ", constraint.ConstraintState, "next state: ", stateName(ConstraintState(nextState)), "rulename: ", ruleName, "resultValue: ", resultValue)
+						//	fmt.Println("Result: ", res)
+						//}
+						if resultValueMap, ok := resultValue.(map[string]interface{}); ok {
+							for caseId, isTrue := range resultValueMap {
+								if isTrue.(bool) {
+									constraint.ConstraintState[caseId] = ConstraintState(nextState)
+									fmt.Printf("Constraint %s transitioned from %s to %s for case %s", constraint.name, stateName(currentState), stateName(ConstraintState(nextState)), caseId)
+									fmt.Println()
+									resultMap[traceId] = nextState
+									transitionFound = false
+									//TODO: set the above variable to true to enable the recursive inspection of the constraints
+								}
+							}
+						}
+					}
+				}
+				if !transitionFound {
+					break
+				}
+			}
 
-                    }
-                }
-                for caseId := range temporaryViolated {
-                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 5) {
-                        constraint.ConstraintState[caseId] = TemporaryViolated
-                        fmt.Println("Constraint ", constraintName, "in temporary violated state for case ", caseId)
-                        resultMap[traceId] = TemporaryViolated
-                    }
-                }
-                for caseId := range violations {
-                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 2) {
-                        constraint.ConstraintState[caseId] = Violated
-                        fmt.Println("Constraint ", constraintName, "in violated state for case ", caseId)
-                        resultMap[traceId] = Violated
-                    }
-                }
-                for caseId := range satisfied {
-                    if constraint.fsm.HasTransition(int(constraint.ConstraintState[traceId]), 3) {
-                        constraint.ConstraintState[caseId] = Satisfied
-                        fmt.Println("Constraint ", constraintName, "in satisfied state for case ", caseId)
-                        resultMap[traceId] = Satisfied
-                    }
-                }
-            }
-        }(constraint,evInputLog)
+		}(constraint)
 	}
 	wg.Wait()
 	return resultMap
 }
 
+func stateName(state ConstraintState) string {
+	switch state {
+	case Init:
+		return "Init"
+	case Pending:
+		return "Pending"
+	case Violated:
+		return "Violated"
+	case Satisfied:
+		return "Satisfied"
+	case TemporarySatisfied:
+		return "TemporarySatisfied"
+	case TemporaryViolated:
+		return "TemporaryViolated"
+	default:
+		return "Unknown"
+	}
+}
+
 
 var fsmMap = map[string]*CustomFSM{
 
-"inspect_goods_within_onehour": {
-    Transitions: [][]int{
-        {5},
-        {},
-        {},
-        {},
-        {2},
-        {2, 4},
-    },
-},
-
-"separation_of_duty": {
-    Transitions: [][]int{
-        {4},
-        {},
-        {},
-        {},
-        {2, 3},
-        {},
-    },
-},
-
-"shipment_cost": {
+"R17": {
     Transitions: [][]int{
         {4, 5},
         {},
         {},
         {},
-        {5},
-        {4},
+        {3, 2},
+        {4, 2},
     },
 },
 
-"truck_policy": {
+"R18": {
     Transitions: [][]int{
-        {4, 2, 3},
+        {4, 5},
+        {},
+        {},
+        {},
+        {3, 2},
+        {4, 2},
+    },
+},
+
+"R19": {
+    Transitions: [][]int{
+        {2, 5, 4},
+        {},
+        {},
+        {},
+        {3, 5},
+        {4, 2},
+    },
+},
+
+"R20": {
+    Transitions: [][]int{
+        {5},
+        {},
         {},
         {},
         {},
         {2, 3},
+    },
+},
+
+"R21": {
+    Transitions: [][]int{
+        {5, 3},
         {},
+        {},
+        {},
+        {5, 3},
+        {2, 4, 2},
+    },
+},
+
+"R22": {
+    Transitions: [][]int{
+        {5, 3, 2},
+        {},
+        {},
+        {},
+        {5, 3},
+        {2, 4},
+    },
+},
+
+"R23": {
+    Transitions: [][]int{
+        {5, 3, 2},
+        {},
+        {},
+        {},
+        {5, 3},
+        {2, 4},
+    },
+},
+
+"R24": {
+    Transitions: [][]int{
+        {5, 3},
+        {},
+        {},
+        {},
+        {5, 3},
+        {2, 4, 2},
+    },
+},
+
+"R25": {
+    Transitions: [][]int{
+        {4, 3},
+        {},
+        {},
+        {},
+        {3, 2},
+        {},
+    },
+},
+
+"R26": {
+    Transitions: [][]int{
+        {4, 3},
+        {},
+        {},
+        {},
+        {3, 2},
+        {},
+    },
+},
+
+"R27": {
+    Transitions: [][]int{
+        {5, 3},
+        {},
+        {},
+        {},
+        {3, 2},
+        {2, 4},
+    },
+},
+
+"R28": {
+    Transitions: [][]int{
+        {5, 3},
+        {},
+        {},
+        {},
+        {3, 2},
+        {2, 4},
     },
 },
 
