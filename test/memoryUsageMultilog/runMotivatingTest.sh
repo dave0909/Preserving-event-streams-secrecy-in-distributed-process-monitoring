@@ -9,7 +9,7 @@ run_process_state_agent() {
 run_process_vault() {
     # Change to the directory where the main executable is located
     cd ../..
-    python3 pv3.py ./data/PNML/motivating.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json true true 40000 false 150
+    python3 pv4.py ./data/PNML/motivating.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json true true 40000 false 150
     # Change back to the original directory
     cd -
 }

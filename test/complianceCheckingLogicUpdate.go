@@ -717,13 +717,100 @@ func main() {
 	//fmt.Println("Evaluation 2")
 	//ccLogic.EvaluateEventLog(eventLog)
 	//TODO: test R28 constraint
+	//eventLog := map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "W_Completeren aanvraag",
+	//			"lifecycle:transition": "SCHEDULE",
+	//			"timestamp":            "2021-10-01T00:00:00Z",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 1")
+	//ccLogic.EvaluateEventLog(eventLog)
+	//eventLog = map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "W_Completeren aanvraag",
+	//			"lifecycle:transition": "SCHEDULE",
+	//			"timestamp":            "2021-10-01T00:00:00Z",
+	//		},
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "W_Completeren aanvraag",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"timestamp":            "2021-10-01T00:00:27Z",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 2")
+	//ccLogic.EvaluateEventLog(eventLog)
+	//eventLog = map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "W_Completeren aanvraag",
+	//			"lifecycle:transition": "SCHEDULE",
+	//			"timestamp":            "2021-10-01T00:00:00Z",
+	//		},
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "W_Completeren aanvraag",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"timestamp":            "2021-10-01T00:00:27Z",
+	//		},
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "__END__",
+	//			"lifecycle:transition": "COMPLETE",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 3")
+	//ccLogic.EvaluateEventLog(eventLog)
+
+	//Test R29 constraint-------------------------------------------------------------------------------------------
+	//eventLog := map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_SUBMITTED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator1",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 1")
+	//ccLogic.EvaluateEventLog(eventLog)
+	//eventLog = map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_SUBMITTED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator1",
+	//		},
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_PARTLYSUBMITTED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator2",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 2")
+	//ccLogic.EvaluateEventLog(eventLog)
+
+	//TEST R31 constraint-------------------------------------------------------------------------------------------
 	eventLog := map[string][]map[string]interface{}{
 		"events": {
 			{
 				"trace_concept_name":   "1",
-				"concept_name":         "W_Completeren aanvraag",
-				"lifecycle:transition": "SCHEDULE",
-				"timestamp":            "2021-10-01T00:00:00Z",
+				"concept_name":         "A_SUBMITTED",
+				"lifecycle:transition": "COMPLETE",
+				"org:resource":         "operator1",
 			},
 		},
 	}
@@ -733,38 +820,40 @@ func main() {
 		"events": {
 			{
 				"trace_concept_name":   "1",
-				"concept_name":         "W_Completeren aanvraag",
-				"lifecycle:transition": "SCHEDULE",
-				"timestamp":            "2021-10-01T00:00:00Z",
+				"concept_name":         "A_SUBMITTED",
+				"lifecycle:transition": "COMPLETE",
+				"org:resource":         "operator1",
 			},
 			{
 				"trace_concept_name":   "1",
-				"concept_name":         "W_Completeren aanvraag",
+				"concept_name":         "A_FINALIZED",
 				"lifecycle:transition": "COMPLETE",
-				"timestamp":            "2021-10-01T00:00:27Z",
+				"org:resource":         "operator2",
 			},
 		},
 	}
 	fmt.Println("Evaluation 2")
 	ccLogic.EvaluateEventLog(eventLog)
+	ccLogic.EvaluateEventLog(eventLog)
 	eventLog = map[string][]map[string]interface{}{
 		"events": {
 			{
 				"trace_concept_name":   "1",
-				"concept_name":         "W_Completeren aanvraag",
-				"lifecycle:transition": "SCHEDULE",
-				"timestamp":            "2021-10-01T00:00:00Z",
+				"concept_name":         "A_SUBMITTED",
+				"lifecycle:transition": "COMPLETE",
+				"org:resource":         "operator1",
 			},
 			{
 				"trace_concept_name":   "1",
-				"concept_name":         "W_Completeren aanvraag",
+				"concept_name":         "A_FINALIZED",
 				"lifecycle:transition": "COMPLETE",
-				"timestamp":            "2021-10-01T00:00:27Z",
+				"org:resource":         "operator2",
 			},
 			{
 				"trace_concept_name":   "1",
-				"concept_name":         "__END__",
+				"concept_name":         "A_FINALIZED",
 				"lifecycle:transition": "COMPLETE",
+				"org:resource":         "operator1",
 			},
 		},
 	}

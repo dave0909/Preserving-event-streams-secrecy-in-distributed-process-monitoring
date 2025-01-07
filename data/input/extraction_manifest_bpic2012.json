@@ -11,6 +11,9 @@
     "A_CANCELLED": [],
     "A_DECLINED": [],
     "A_REGISTERED": [],
-    "A_SUBMITTED": []
+    "A_SUBMITTED": ["org:resource"],
+    "A_PARTLYSUBMITTED": ["org:resource"],
+    "A_ACCEPTED": ["org:resource"],
+    "A_FINALIZED": ["org:resource"]
   }
 }
