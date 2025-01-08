@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"main/complianceCheckingLogic"
 )
 
@@ -237,6 +236,34 @@ func main() {
 	//		},
 	//	},
 	//}
+	//ccLogic.EvaluateEventLog(eventLog)
+
+	//Test restock_goods
+	//eventLog := map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name": "1",
+	//			"concept_name":       "Retrieve goods from the stock (RGFS)",
+	//			"product_units":      10,
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 1")
+	//ccLogic.EvaluateEventLog(eventLog)
+	//eventLog = map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name": "1",
+	//			"concept_name":       "Retrieve goods from the stock (RGFS)",
+	//			"product_units":      10,
+	//		},
+	//		{
+	//			"trace_concept_name": "1",
+	//			"concept_name":       "__END__",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 2")
 	//ccLogic.EvaluateEventLog(eventLog)
 
 	//Test iv_antibiotics_within_onehour constraint---------------------------------
@@ -804,60 +831,60 @@ func main() {
 	//ccLogic.EvaluateEventLog(eventLog)
 
 	//TEST R31 constraint-------------------------------------------------------------------------------------------
-	eventLog := map[string][]map[string]interface{}{
-		"events": {
-			{
-				"trace_concept_name":   "1",
-				"concept_name":         "A_SUBMITTED",
-				"lifecycle:transition": "COMPLETE",
-				"org:resource":         "operator1",
-			},
-		},
-	}
-	fmt.Println("Evaluation 1")
-	ccLogic.EvaluateEventLog(eventLog)
-	eventLog = map[string][]map[string]interface{}{
-		"events": {
-			{
-				"trace_concept_name":   "1",
-				"concept_name":         "A_SUBMITTED",
-				"lifecycle:transition": "COMPLETE",
-				"org:resource":         "operator1",
-			},
-			{
-				"trace_concept_name":   "1",
-				"concept_name":         "A_FINALIZED",
-				"lifecycle:transition": "COMPLETE",
-				"org:resource":         "operator2",
-			},
-		},
-	}
-	fmt.Println("Evaluation 2")
-	ccLogic.EvaluateEventLog(eventLog)
-	ccLogic.EvaluateEventLog(eventLog)
-	eventLog = map[string][]map[string]interface{}{
-		"events": {
-			{
-				"trace_concept_name":   "1",
-				"concept_name":         "A_SUBMITTED",
-				"lifecycle:transition": "COMPLETE",
-				"org:resource":         "operator1",
-			},
-			{
-				"trace_concept_name":   "1",
-				"concept_name":         "A_FINALIZED",
-				"lifecycle:transition": "COMPLETE",
-				"org:resource":         "operator2",
-			},
-			{
-				"trace_concept_name":   "1",
-				"concept_name":         "A_FINALIZED",
-				"lifecycle:transition": "COMPLETE",
-				"org:resource":         "operator1",
-			},
-		},
-	}
-	fmt.Println("Evaluation 3")
-	ccLogic.EvaluateEventLog(eventLog)
+	//eventLog := map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_SUBMITTED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator1",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 1")
+	//ccLogic.EvaluateEventLog(eventLog)
+	//eventLog = map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_SUBMITTED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator1",
+	//		},
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_FINALIZED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator2",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 2")
+	//ccLogic.EvaluateEventLog(eventLog)
+	//ccLogic.EvaluateEventLog(eventLog)
+	//eventLog = map[string][]map[string]interface{}{
+	//	"events": {
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_SUBMITTED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator1",
+	//		},
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_FINALIZED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator2",
+	//		},
+	//		{
+	//			"trace_concept_name":   "1",
+	//			"concept_name":         "A_FINALIZED",
+	//			"lifecycle:transition": "COMPLETE",
+	//			"org:resource":         "operator1",
+	//		},
+	//	},
+	//}
+	//fmt.Println("Evaluation 3")
+	//ccLogic.EvaluateEventLog(eventLog)
 
 }

@@ -38,7 +38,7 @@ TemporarySatisfiedToTemporaryViolated[trace_id] if {
 # Define a function to check the cost condition
 check_cost_condition(trace_id) if {
     reserve_cost := max([e.cost | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Shipment reservation sent (SRS)"])
-    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trac e_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
+    drive_distance_i := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to costumer (DC)"])
     drive_distance_m := sum([e.km_distance | e := input.events[_]; e.trace_concept_name == trace_id; e.concept_name == "Drive to manufacturer (DM)"])
     reserve_cost <= (drive_distance_i + drive_distance_m) * 3
 }
