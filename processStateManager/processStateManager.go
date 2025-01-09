@@ -13,6 +13,7 @@ import (
 	"net/rpc"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"time"
 )
@@ -261,7 +262,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		//clear the events log by removing the first 100 events
 		//psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
 		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, psm.slidingWindowSize-50)
-		//runtime.GC()
+		runtime.GC()
 	}
 	//fmt.Println("Event number: ", psm.ProcessState.Counter)
 	duration := time.Since(firtsTs).Seconds()
