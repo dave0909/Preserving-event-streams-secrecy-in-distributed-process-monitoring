@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy.optimize import curve_fit
 
-df = pd.read_csv('../data/testResults/v1/memory_usage_trafficFines_v1.csv', decimal='.', header=0)
+df = pd.read_csv('../data/testResults/16.01.2025/memory_usage_trafficFines40000_10msnogc_nocfl.csv', decimal='.', header=0)
 
 # SECONDS
 df['Timestamp'] = df['Timestamp'].apply(lambda x: datetime.utcfromtimestamp(x/1000))
@@ -28,12 +28,12 @@ plt.style.use("seaborn-v0_8-bright")
 plt.figure(figsize=(16, 9))
 
 # Original trend
-plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], color='steelblue', linewidth=3, label="Memory usage trend")
+plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], color='steelblue', linewidth=2, label="Memory usage trend")
 
 # Logarithmic curve
 #plt.plot(x_data, log_fit_y, color='darkorange', linestyle='--', linewidth=2, label="Logarithmic interpolation")
 
-plt.axhline(y=181, color='red', linestyle='--', linewidth=3, label="Total log size")
+#plt.axhline(y=181, color='red', linestyle='--', linewidth=3, label="Total log size")
 
 plt.xlabel('Run completion percentage', fontsize=30, labelpad=15)
 plt.ylabel('Memory usage (MB)', fontsize=30, labelpad=15)
@@ -43,7 +43,7 @@ plt.xticks(fontsize=30)
 plt.yticks(fontsize=30)
 
 plt.xlim([0, 101])
-plt.ylim(0, 300)
+plt.ylim(0, 20)
 plt.tight_layout()
-plt.savefig('../data/testResults/memory_usage_trafficFines_v1.pdf')
+plt.savefig('../data/testResults/16.01.2025/memory_usage_trafficFines40000_10msnogc_nocfl.pdf')
 # plt.show()

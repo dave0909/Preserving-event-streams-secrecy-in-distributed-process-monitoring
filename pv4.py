@@ -195,7 +195,6 @@ def apply(bpmn_graph, parameters=None):
     for silent_transition in silent_transitions:
         if silent_transition in all_tr:
             final_silent_transitions.add(silent_transition)
-    #TODO dovremmo aggiungere l'end event come una silent
     return net, im, fm,trans_names,final_silent_transitions
 
 
@@ -772,7 +771,6 @@ type Constraint struct {
 
 type ComplianceCheckingLogic struct {
 	preparedConstraints []Constraint
-	ctx                 context.Context
 }
 
 // Function that creates a prepared constraint for each constraint
@@ -780,7 +778,6 @@ func InitComplianceCheckingLogic() (ComplianceCheckingLogic, []string) {
 	ctx := context.TODO()
 	ccLogic := ComplianceCheckingLogic{
 		preparedConstraints: []Constraint{},
-		ctx:                 ctx,
 	}
 	for i, constraint := range constraints {
 		query, err := rego.New(
@@ -817,17 +814,13 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 		wg.Add(1)
 		go func(constraint Constraint) {
 			defer wg.Done()
-			res, err := constraint.preparedEvalQuery.Eval(ccl.ctx, rego.EvalInput(eventLog))
+			res, err := constraint.preparedEvalQuery.Eval(context.Background(), rego.EvalInput(eventLog))
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			//currentState := constraint.ConstraintState[traceId]
-			//if constraint.name == "truck_policy" {
-			//	fmt.Println(res)
-			//}
 			for {
 				transitionFound := false
 				currentState := constraint.ConstraintState[traceId]
@@ -835,10 +828,6 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 					currentState := constraint.ConstraintState[traceId]
 					ruleName := fmt.Sprintf("%sTo%s", stateName(currentState), stateName(ConstraintState(nextState)))
 					if resultValue, ok := res[0].Expressions[0].Value.(map[string]interface{})[ruleName]; ok {
-						//if constraint.name == "shipment_cost" {
-						//	fmt.Println("Constraint name: ", constraint.name, "in state ", constraint.ConstraintState, "next state: ", stateName(ConstraintState(nextState)), "rulename: ", ruleName, "resultValue: ", resultValue)
-						//	fmt.Println("Result: ", res)
-						//}
 						if resultValueMap, ok := resultValue.(map[string]interface{}); ok {
 							for caseId, isTrue := range resultValueMap {
 								if isTrue.(bool) {
@@ -993,7 +982,7 @@ def main():
         command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue + " "+slidingWindowSize
     else:
         print("Building and running the Process Vault in non-simulation mode...")
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue+ " "+slidingWindowSize
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && GOGC=off ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue+ " "+slidingWindowSize
         # Execute the build and run commands
     try:
         subprocess.run(

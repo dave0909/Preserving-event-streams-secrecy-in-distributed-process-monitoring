@@ -71,6 +71,8 @@ type ProcessStateAgent struct {
 	//Subcounter
 	SubCounter      int
 	skipAttestation bool
+	submittedEvents int
+	mapArrivals
 }
 
 func initProcessStateAgent(address string, eventStreamGenerator string, skipAttestation bool) ProcessStateAgent {
@@ -98,11 +100,12 @@ func (psa *ProcessStateAgent) sendEvent(eventString string, client rpc.Client) {
 	// Call the SendEvent method
 	var reply string
 	eventSubmission := eventsubmission.EventSubmission{EncryptedEvent: eventString, AgentReference: psa.Address}
+	psa.mu.Lock()
 	err := client.Call("EventDispatcher.SendEvent", eventSubmission, &reply)
 	if err != nil {
 		log.Println("Error calling SendEvent: %v", err)
-		return
 	}
+	psa.mu.Unlock()
 }
 
 func (psa *ProcessStateAgent) broadcastEvent(eventString string) {
@@ -113,7 +116,8 @@ func (psa *ProcessStateAgent) broadcastEvent(eventString string) {
 		if err != nil {
 			log.Fatalf("Error encrypting event: %v", err)
 		}
-		psa.sendEvent(encryptedEvent, *sub.ClientConnection)
+		//TODO: remove go here below if you have issues
+		go psa.sendEvent(encryptedEvent, *sub.ClientConnection)
 	}
 }
 

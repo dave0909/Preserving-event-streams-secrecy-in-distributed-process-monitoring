@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/edgelesssys/ego/ecrypto"
 	"github.com/edgelesssys/ego/enclave"
@@ -72,17 +73,42 @@ func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmis
 	decryptedEvent, err := ed.decryptEvent(eventSubmission.EncryptedEvent, key)
 	if err != nil {
 		fmt.Println("Error decrypting event: ", err)
+		return errors.New("Error decrypting event: " + err.Error())
 	}
 	event, err := xes.ParseXes(decryptedEvent)
 	if err != nil {
 		fmt.Println("Error parsing event: ", err)
-		return err
+		return errors.New("Error parsing event:  " + err.Error())
 	}
+
+	//TODO:THIS PART HERE IS NEW. Remove it to come back as before------------------------------------------------------------------------------------------------
+	//This part here below is used to filter unnecessary attributes and avoid the process state manager to process useless data
+	parsedEvent := xes.Event{ActivityID: event.ActivityID, CaseID: event.CaseID, Timestamp: event.Timestamp, Attributes: make(map[string]interface{})}
+	//Check if the eventId variable is a key in the "attribute_extraction" field of the extraction manifest
+	if _, ok := ed.AttributeExtractors[event.ActivityID]; ok {
+		//If the eventId is a key in the "attribute_extraction" field, extract the attributes
+		attributeExtractors := ed.AttributeExtractors[event.ActivityID].([]interface{})
+		for _, attrName := range attributeExtractors {
+			//If attrName is a key in data
+			if _, ok := event.Attributes[attrName.(string)]; ok {
+				parsedEvent.Attributes[attrName.(string)] = event.Attributes[attrName.(string)]
+			}
+		}
+		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
+	}
+	event = nil
+	//TODO:END OF THE NEW PART------------------------------------------------------------------------
 	if ed.ExternalQueryClient != nil {
 		// Send the event to the external query server
 		var externalQueryReply string
 		//Convert decrypted event to a byte array
-		byteDecryptedEvent := []byte(decryptedEvent)
+		//TODO: OLD VERSION here below. comment and delete the eventString variable to come back.
+		//byteDecryptedEvent := []byte(decryptedEvent)
+		eventString, err := xes.Stringify(parsedEvent)
+		if err != nil {
+			return errors.New("Error parsing event to be put in the external queue: " + err.Error())
+		}
+		byteDecryptedEvent := []byte(eventString)
 		sealedEvent, err := ecrypto.SealWithUniqueKey(byteDecryptedEvent, []byte(""))
 		if err != nil {
 			fmt.Println("Error sealing event: ", err)
@@ -92,7 +118,7 @@ func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmis
 			fmt.Println("Error calling external query server: ", err)
 		}
 	} else {
-		ed.EventChannel <- *event
+		ed.EventChannel <- parsedEvent
 	}
 	*reply = "Event processed successfully"
 	return nil

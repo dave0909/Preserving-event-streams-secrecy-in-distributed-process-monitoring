@@ -3,7 +3,7 @@
   "activity_timestamp": "time:timestamp",
   "case_id": "concept:name",
   "attribute_extraction": {
-    "Select truck (ST)": ["license_firt_issue"],
+    "Select truck (ST)": ["license_first_issue"],
     "Shipment reservation sent (SRS)": ["cost"],
     "Fill in container (FC)": ["logistics_operator"],
     "Check container (CC)": ["logistics_operator"],

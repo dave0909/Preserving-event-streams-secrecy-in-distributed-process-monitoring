@@ -128,6 +128,83 @@ func ParseXes(xesString string) (*Event, error) {
 	return event, nil
 }
 
+// Stringify generates a full XES XML string from an Event
+func Stringify(event Event) (string, error) {
+	// Convert the Event into an XesEvent structure
+	xesEvent := XesEvent{}
+
+	// Map the string attributes from the Event
+	for key, value := range event.Attributes {
+		switch v := value.(type) {
+		case string:
+			xesEvent.StringAttributes = append(xesEvent.StringAttributes, XesString{Key: key, Value: v})
+		case int:
+			xesEvent.IntegerAttributes = append(xesEvent.IntegerAttributes, XesInt{Key: key, Value: v})
+		case bool:
+			xesEvent.BooleanAttributes = append(xesEvent.BooleanAttributes, XesBoolean{Key: key, Value: v})
+		case float64:
+			xesEvent.FloatAttributes = append(xesEvent.FloatAttributes, XesFloat{Key: key, Value: v})
+		case time.Time:
+			xesEvent.Timestamp = append(xesEvent.Timestamp, XesDate{Key: key, Value: v})
+		default:
+			return "", fmt.Errorf("unsupported attribute type for key '%s': %T", key, v)
+		}
+	}
+
+	// Add the CaseID and ActivityID as specific string attributes
+	xesEvent.StringAttributes = append(xesEvent.StringAttributes,
+		XesString{Key: "concept:name", Value: event.ActivityID})
+
+	// Create a trace with the CaseID as a string field
+	trace := XesTrace{
+		Strings: []XesString{
+			{Key: "concept:name", Value: event.CaseID},
+		},
+		Events: []XesEvent{xesEvent},
+	}
+
+	// Create the wrapper and log structure
+	wrapper := XesWrapper{
+		Log: XesLog{
+			Trace: trace,
+		},
+	}
+
+	// Serialize the wrapper to XML
+	xmlData, err := xml.MarshalIndent(wrapper, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("error serializing XES: %v", err)
+	}
+
+	return string(xmlData), nil
+}
+
+func main() {
+	// Example Event
+	event := Event{
+		CaseID:     "Case123",
+		ActivityID: "ActivityStart",
+		Timestamp:  time.Now().Format(time.RFC3339),
+		Attributes: map[string]interface{}{
+			"custom:string":  "exampleValue",
+			"custom:int":     42,
+			"custom:bool":    true,
+			"custom:float":   3.14,
+			"time:timestamp": time.Now(),
+		},
+	}
+
+	// Generate the XES XML string
+	xesXML, err := Stringify(event)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Print the result
+	fmt.Println(xesXML)
+}
+
 /*
 <org.deckfour.xes.model.impl.XTraceImpl>
   <log

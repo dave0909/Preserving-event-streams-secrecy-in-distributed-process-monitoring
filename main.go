@@ -9,15 +9,21 @@ import (
 	"main/processStateManager"
 	"main/utils/attestation"
 	"main/utils/xes"
+	"net/http"
+	_ "net/http/pprof"
 	"net/rpc"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"time"
 )
 
 func main() {
-
+	debug.SetGCPercent(-1)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	addr := os.Args[1]
 	manifestFileName := os.Args[2]
 	simulationMode := os.Args[3]
@@ -74,7 +80,7 @@ func main() {
 	eventDispatcher.SubscribeTo("localhost:6065")
 	// Start recording memory usage
 	if testModeBool {
-		go recordMemoryUsage(10*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
+		go recordMemoryUsage(10*time.Millisecond, 10*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
 	}
 	psm.WaitForEvents()
 }
@@ -103,51 +109,9 @@ func parseExtractionManifest(manifestFileName string) map[string]interface{} {
 	return attribute_extractors
 }
 
-//func readEventStream(psm processStateManager.ProcessStateManager, conn net.Conn) {
-//	reader := bufio.NewReader(conn)
-//	for {
-//		event, err := reader.ReadString('\n')
-//		if err != nil {
-//			fmt.Println("Error reading from server:", err)
-//			return
-//		}
-//		parsed_event, err := xes.ParseXes(event)
-//		if err != nil {
-//			log.Fatalf("Failed to parse XES data: %v", err)
-//		}
-//		psm.HandleEvent(parsed_event.ActivityID, parsed_event.CaseID, parsed_event.Timestamp, parsed_event.Attributes)
-//	}
-//}
-
-/**
-<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"><trace><string key="concept:name" value="case_3"/><event><string key="concept:name" value="Select truck"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <int key="tempo" value="14109"/> <int key="license_first_issue" value="14107"/> </event> </trace></log></org.deckfour.xes.model.impl.XTraceImpl>
-**/
-
-/**
-TEST truck policy with violation
-<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="3"/> <event> <string key="concept:name" value="Select truck"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <date key="license_first_issue" value="2023-10-03T16:27:33.682+02:00"/></event></trace></log></org.deckfour.xes.model.impl.XTraceImpl>
-**/
-/**
-TEST truck policy with no violation
-<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="3"/> <event> <string key="concept:name" value="Select truck"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <date key="license_first_issue" value="2017-10-03T16:27:33.682+02:00"/></event></trace></log></org.deckfour.xes.model.impl.XTraceImpl>
-**/
-
-/**
-<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="1"/> <event> <string key="concept:name" value="Reserve shipment"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <float key="cost" value="500.00"/> <string key="trace_concept_name" value="1"/> </event></trace></log></org.deckfour.xes.model.impl.XTraceImpl>
-**/
-
-/**
-<org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Patient hospitalized (PH)"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
-<org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Carry out preliminary analyses(COPA)"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
-<org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Order drugs(OD)"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
-<org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Drugs order received (DOR)"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
-<org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Patient  hospitalized (PH)"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
-<org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Drugs order received (DOR)"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
-**/
-
-// <org.deckfour.xes.model.impl.XTraceImpl> <log openxes.version="1.0RC7" xes.features="nested-attributes" xes.version="1.0" xmlns="http://www.xes-standard.org/"> <trace> <string key="concept:name" value="2"/> <event> <string key="concept:name" value="Activity G"/> <date key="time:timestamp" value="2024-10-03T16:27:33.682+02:00"/> <string key="organization" value="organization_A"/> </event> </trace> </log> </org.deckfour.xes.model.impl.XTraceImpl>
 // Function to record memory usage
-func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm *processStateManager.ProcessStateManager) {
+/**
+func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileName string, nEvents int, psm *processStateManager.ProcessStateManager) {
 	// Open the file in append mode (create if it doesn't exist)
 	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -163,6 +127,7 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 		_, _ = file.WriteString("Timestamp,Memory Usage\n")
 	}
 	ticker := time.NewTicker(interval)
+	gcTicker := time.NewTicker(gcInterval)
 	defer ticker.Stop()
 	for {
 		if psm.FirstInit {
@@ -183,8 +148,67 @@ func recordMemoryUsage(interval time.Duration, fileName string, nEvents int, psm
 				_, _ = file.WriteString(data)
 				// Also print to the console
 				//fmt.Printf("%s - Memory Usage: %d MiB", currentTime, alloc)
+			case <-gcTicker.C:
+				if gcInterval != 0 {
+					go runtime.GC()
+				}
 			}
 		}
 	}
 	fmt.Println("End of the test after ", nEvents, "events")
+}
+**/
+func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileName string, nEvents int, psm *processStateManager.ProcessStateManager) {
+	// File setup
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		log.Fatalf("Failed to get file info: %v", err)
+	}
+	if fileInfo.Size() == 0 {
+		_, _ = file.WriteString("Timestamp,Memory Usage\n")
+	}
+
+	ticker := time.NewTicker(interval)
+
+	defer ticker.Stop()
+	//Garbage collection
+	if gcInterval != 0 {
+		gcTicker := time.NewTicker(gcInterval)
+		defer gcTicker.Stop()
+		// Garbage collection goroutine
+		go func() {
+			for range gcTicker.C {
+				if psm.FirstInit && psm.TotalCounter < nEvents && gcInterval != 0 {
+					go runtime.GC()
+				}
+			}
+		}()
+	}
+	// Memory usage recording goroutine
+	go func() {
+		for range ticker.C {
+			if psm.FirstInit && psm.TotalCounter < nEvents {
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+
+				currentTime := time.Now().Unix()
+				alloc := m.HeapAlloc
+				data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
+				_, _ = file.WriteString(data)
+			}
+		}
+	}()
+
+	// Wait for all events to be processed
+	for psm.TotalCounter < nEvents {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	fmt.Println("End of the test after", nEvents, "events")
 }

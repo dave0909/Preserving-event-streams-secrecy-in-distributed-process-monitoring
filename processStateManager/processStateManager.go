@@ -13,7 +13,6 @@ import (
 	"net/rpc"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"time"
 )
@@ -186,10 +185,61 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 				eventLogEntry[attrName.(string)] = data[attrName.(string)]
 			}
 		}
-		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 		addEventFlag = true
 	}
-	//TODO Add here a check if the event is the last event marker
+	//psm.updateControlFlow(eventId, caseId, timestamp)
+	psm.updateComplianceR(caseId, eventLogEntry)
+	if addEventFlag {
+		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
+	}
+	//Clear old events
+	//if len(psm.ProcessState.EventLog) == 150 {
+	if len(psm.ProcessState.EventLog) == psm.slidingWindowSize {
+		//clear the events log by removing the first 100 events
+		//psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
+		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, psm.slidingWindowSize-50)
+		//runtime.GC()
+	}
+	duration := time.Since(firtsTs).Seconds()
+	durationFromStart := time.Since(psm.runStarted)
+	psm.totalDuration += duration
+	if duration < psm.minDuration && duration != 0 {
+		psm.minDuration = duration
+	}
+	if duration > psm.maxDuration {
+		psm.maxDuration = duration
+	}
+	// Incremental calculation of mean and variance
+	delta := duration - psm.mean
+	psm.mean += delta / float64(psm.ProcessState.Counter)
+	delta2 := duration - psm.mean
+	psm.m2 += delta * delta2
+	// Calculate standard deviation
+	variance := psm.m2 / float64(psm.ProcessState.Counter)
+	stdDev := math.Sqrt(variance)
+	//fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
+	fmt.Println("Processed events: ", psm.TotalCounter, " out of: ", psm.stopEventNumebr)
+	if psm.TotalCounter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
+		recordDataDuration(durationFromStart, psm, stdDev)
+	}
+
+}
+
+func (psm *ProcessStateManager) updateComplianceR(caseId string, eventLogEntry map[string]interface{}) {
+	elaboratedLog := map[string][]map[string]interface{}{}
+	//Filter the event log to compute only the events with the same case id
+	elaboratedLog["events"] = []map[string]interface{}{}
+	for _, event := range psm.ProcessState.EventLog {
+		if event["trace_concept_name"] == caseId {
+			elaboratedLog["events"] = append(elaboratedLog["events"], event)
+		}
+	}
+	//elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
+	elaboratedLog["events"] = append(elaboratedLog["events"], eventLogEntry)
+	_ = psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
+}
+
+func (psm *ProcessStateManager) updateControlFlow(eventId string, caseId string, timestamp string) {
 	//Check if the event is the last event marker
 	if eventId == "__END__" {
 		//Get the token of the current case
@@ -239,53 +289,6 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		}
 		//TODO: ADD HERE THE WORKFLOW UDPATE EXTERNALIZATION
 
-	}
-	//fmt.Println("Time for workflow monitoring: ", time.Since(firtsTs).Seconds())
-	elaboratedLog := map[string][]map[string]interface{}{}
-	//Filter the event log to compute only the events with the same case id
-	elaboratedLog["events"] = []map[string]interface{}{}
-	for _, event := range psm.ProcessState.EventLog {
-		if event["trace_concept_name"] == caseId {
-			elaboratedLog["events"] = append(elaboratedLog["events"], event)
-		}
-	}
-	//elaboratedLog["events"] = append(psm.ProcessState.EventLog, eventLogEntry)
-	elaboratedLog["events"] = append(elaboratedLog["events"], eventLogEntry)
-	_ = psm.ComplianceCheckingLogic.EvaluateEventLog(elaboratedLog)
-	if addEventFlag {
-		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
-	}
-	//Clear old events
-	//if len(psm.ProcessState.EventLog) == 150 {
-	if len(psm.ProcessState.EventLog) == psm.slidingWindowSize {
-
-		//clear the events log by removing the first 100 events
-		//psm.ProcessState.EventLog = psm.ProcessState.EventLog[100:]
-		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, psm.slidingWindowSize-50)
-		runtime.GC()
-	}
-	//fmt.Println("Event number: ", psm.ProcessState.Counter)
-	duration := time.Since(firtsTs).Seconds()
-	durationFromStart := time.Since(psm.runStarted)
-	psm.totalDuration += duration
-	if duration < psm.minDuration && duration != 0 {
-		psm.minDuration = duration
-	}
-	if duration > psm.maxDuration {
-		psm.maxDuration = duration
-	}
-	// Incremental calculation of mean and variance
-	delta := duration - psm.mean
-	psm.mean += delta / float64(psm.ProcessState.Counter)
-	delta2 := duration - psm.mean
-	psm.m2 += delta * delta2
-	// Calculate standard deviation
-	variance := psm.m2 / float64(psm.ProcessState.Counter)
-	stdDev := math.Sqrt(variance)
-	//fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
-	fmt.Println("Processed events: ", psm.TotalCounter, " out of: ", psm.stopEventNumebr)
-	if psm.TotalCounter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
-		recordDataDuration(durationFromStart, psm, stdDev)
 	}
 }
 
