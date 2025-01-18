@@ -2,7 +2,7 @@
 
 # Function to run the process state agent
 run_process_state_agent() {
-    CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go run ../../procesStateAgent/processStateAgent.go localhost:6065 localhost:1234 false
+    CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go run ../../procesStateAgent/processStateAgent.go localhost:6065 localhost:1234 false true
 }
 
 # Function to run the process vault
@@ -20,8 +20,23 @@ run_event_stream_generator(){
   cd -
 }
 
+run_delay_hub() {
+    CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go run delayHub.go localhost:8388
+    }
 # Trap SIGINT to terminate background processes
 trap 'kill $(jobs -p); exit' SIGINT
+kill -9 $(lsof -t -i:6066)
+
+
+
+#Go to the directory where the delay hub is located
+cd ../../delayHub
+run_delay_hub &
+#Change back to the original directory
+cd -
+
+
+sleep 2
 
 kill -9 $(lsof -t -i:6066)
 

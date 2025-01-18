@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"main/utils/attestation"
+	"main/utils/delayargs"
 	"main/utils/eventsubmission"
 	"net"
 	"net/rpc"
@@ -26,12 +27,14 @@ func main() {
 	psaServer := os.Args[1]
 	esgAddress := os.Args[2]
 	skippAttestation := os.Args[3]
+	testMode := os.Args[4]
 	skippAttestationBool := skippAttestation == "true"
+	testModeBool := testMode == "true"
 	if skippAttestationBool {
 		fmt.Println("Running process state agent without remote attestation")
 	}
 
-	psa := initProcessStateAgent(psaServer, esgAddress, skippAttestationBool)
+	psa := initProcessStateAgent(psaServer, esgAddress, skippAttestationBool, testModeBool)
 	//TODO: UNCOMMENT HERE TO CONNECT EVENT STREAM GENERATOR
 	//psa.connectToEventSteamGenerator()
 	go psa.StartRPCServer(psaServer)
@@ -72,11 +75,22 @@ type ProcessStateAgent struct {
 	SubCounter      int
 	skipAttestation bool
 	submittedEvents int
-	mapArrivals
+	mapArrivals     map[string]int
+	testMode        bool
+	delayHubClient  *rpc.Client
 }
 
-func initProcessStateAgent(address string, eventStreamGenerator string, skipAttestation bool) ProcessStateAgent {
-	return ProcessStateAgent{EventStreamGenerator: eventStreamGenerator, Address: address, PublicKey: []byte("publicKey"), mu: sync.Mutex{}, skipAttestation: skipAttestation}
+func initProcessStateAgent(address string, eventStreamGenerator string, skipAttestation bool, testMode bool) ProcessStateAgent {
+	if testMode {
+		fmt.Println("Connecting to delay hub at localhost:8388")
+		client, err := rpc.Dial("tcp", "localhost:8388")
+		if err != nil {
+			panic(err)
+		}
+		return ProcessStateAgent{EventStreamGenerator: eventStreamGenerator, Address: address, PublicKey: []byte("publicKey"), mu: sync.Mutex{}, skipAttestation: skipAttestation, mapArrivals: make(map[string]int), submittedEvents: 0, testMode: testMode, delayHubClient: client}
+
+	}
+	return ProcessStateAgent{EventStreamGenerator: eventStreamGenerator, Address: address, PublicKey: []byte("publicKey"), mu: sync.Mutex{}, skipAttestation: skipAttestation, mapArrivals: make(map[string]int), submittedEvents: 0, testMode: testMode, delayHubClient: nil}
 }
 
 func (psa *ProcessStateAgent) readEventStream(conn net.Conn) {
@@ -90,6 +104,8 @@ func (psa *ProcessStateAgent) readEventStream(conn net.Conn) {
 		if err != nil {
 			log.Fatalf("Failed to parse XES data: %v", err)
 		}
+		//Register the event timestamp in the mapArrivals
+		psa.mapArrivals[event] = int(time.Now().UnixMilli())
 		psa.broadcastEvent(event)
 	}
 }
@@ -104,6 +120,23 @@ func (psa *ProcessStateAgent) sendEvent(eventString string, client rpc.Client) {
 	err := client.Call("EventDispatcher.SendEvent", eventSubmission, &reply)
 	if err != nil {
 		log.Println("Error calling SendEvent: %v", err)
+	} else {
+		if psa.testMode {
+			psa.submittedEvents++
+			var arrivalReply bool
+			arrivalArgs := &delayargs.ArrivalArgs{
+				EventCode:        psa.submittedEvents,
+				ArrivalTimestamp: psa.mapArrivals[eventString],
+			}
+			err = psa.delayHubClient.Call("DelayHub.WriteArrival", arrivalArgs, &arrivalReply)
+			if err != nil {
+				fmt.Printf("Error calling WriteArrival: %v\n", err)
+			} else {
+				fmt.Printf("WriteArrival success: %v\n", arrivalReply)
+			}
+			//TODO: send here the number of the submitted event alongside its timestamp to the delay hub
+
+		}
 	}
 	psa.mu.Unlock()
 }
@@ -113,6 +146,8 @@ func (psa *ProcessStateAgent) broadcastEvent(eventString string) {
 		lastHeartbeat := sub.Heartbeats[len(sub.Heartbeats)-1]
 		provisioningKey := lastHeartbeat.ProvisioningKey
 		encryptedEvent, err := psa.encryptEvent(eventString, provisioningKey)
+		psa.mapArrivals[encryptedEvent] = psa.mapArrivals[eventString]
+		go delete(psa.mapArrivals, eventString)
 		if err != nil {
 			log.Fatalf("Error encrypting event: %v", err)
 		}
@@ -128,6 +163,7 @@ func (psa *ProcessStateAgent) StartRPCServer(addr string) {
 		log.Fatal("Listener error:", err)
 	}
 	log.Println("Serving RPC server on port ", addr)
+	defer psa.delayHubClient.Close()
 	rpc.Accept(listener)
 }
 

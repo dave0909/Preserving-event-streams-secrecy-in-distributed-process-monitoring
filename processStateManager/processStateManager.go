@@ -6,6 +6,7 @@ import (
 	"github.com/edgelesssys/ego/ecrypto"
 	"log"
 	"main/complianceCheckingLogic"
+	"main/utils/delayargs"
 	"main/utils/petrinet"
 	"main/utils/xes"
 	"main/workflowLogic"
@@ -88,12 +89,22 @@ type ProcessStateManager struct {
 	ExternalQueueClient     *rpc.Client
 	FirstInit               bool
 	slidingWindowSize       int
+	ExternalDelayHub        *rpc.Client
 }
 
 // Init a new ProcessStateManager
 func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map[string]interface{}, stopEventNumber int, externalQueueClient *rpc.Client, slidingWindowSize int) ProcessStateManager {
 	//ccLogic, cNames := complianceCheckingLogic.InitComplianceCheckingLogic()
 	ccLogic, _ := complianceCheckingLogic.InitComplianceCheckingLogic()
+	externalDelayHub := rpc.Client{}
+	if stopEventNumber != 0 {
+		delaycli, err := rpc.Dial("tcp", "localhost:8388")
+		if err != nil {
+			log.Fatal("Cannot connect to Delay Hub:", err)
+		}
+		externalDelayHub = *delaycli
+	}
+
 	psm := ProcessStateManager{
 		WorkflowLogic:           workflowLogic.InitWorkflowLogic(),
 		ComplianceCheckingLogic: ccLogic,
@@ -106,7 +117,9 @@ func InitProcessStateManager(eventChannel chan xes.Event, extractionManifest map
 		ExternalQueueClient:     externalQueueClient,
 		FirstInit:               false,
 		slidingWindowSize:       slidingWindowSize,
+		ExternalDelayHub:        &externalDelayHub,
 	}
+
 	//ccViolation := map[string]map[string]bool{}
 	//ccViolation := map[string]map[string]ComplianceCheckingViolation{}
 
@@ -187,7 +200,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		}
 		addEventFlag = true
 	}
-	//psm.updateControlFlow(eventId, caseId, timestamp)
+	psm.updateControlFlow(eventId, caseId, timestamp)
 	psm.updateComplianceR(caseId, eventLogEntry)
 	if addEventFlag {
 		psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
@@ -200,6 +213,23 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		psm.ProcessState.EventLog = slices.Delete(psm.ProcessState.EventLog, 0, psm.slidingWindowSize-50)
 		//runtime.GC()
 	}
+	if psm.stopEventNumebr != 0 {
+		//Send the event to the delay hub
+		//fmt.Println("Sending event to the delay hub")
+		// Invoke WriteCompletion
+		completionArgs := &delayargs.CompletionArgs{
+			EventCode:           psm.TotalCounter,
+			CompletionTimestamp: int(time.Now().UnixMilli()),
+		}
+		var completionReply bool
+		err := psm.ExternalDelayHub.Call("DelayHub.WriteCompletion", completionArgs, &completionReply)
+		if err != nil {
+			fmt.Printf("Error calling WriteCompletion: %v\n", err)
+		} else {
+			fmt.Printf("WriteCompletion success: %v\n", completionReply)
+		}
+	}
+
 	duration := time.Since(firtsTs).Seconds()
 	durationFromStart := time.Since(psm.runStarted)
 	psm.totalDuration += duration
