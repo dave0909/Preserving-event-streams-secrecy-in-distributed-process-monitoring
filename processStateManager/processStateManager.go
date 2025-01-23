@@ -217,9 +217,10 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		//Send the event to the delay hub
 		//fmt.Println("Sending event to the delay hub")
 		// Invoke WriteCompletion
+		// Call the GetCurrentTimestamp method
 		completionArgs := &delayargs.CompletionArgs{
 			EventCode:           psm.TotalCounter,
-			CompletionTimestamp: int(time.Now().UnixMilli()),
+			CompletionTimestamp: int(time.Now().UnixNano()),
 		}
 		var completionReply bool
 		err := psm.ExternalDelayHub.Call("DelayHub.WriteCompletion", completionArgs, &completionReply)
@@ -250,6 +251,12 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	//fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
 	fmt.Println("Processed events: ", psm.TotalCounter, " out of: ", psm.stopEventNumebr)
 	if psm.TotalCounter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
+		/**
+		var reply bool
+		if err := psm.ExternalDelayHub.Call("DelayHub.WriteMemoryUsage", struct{}{}, &reply); err != nil {
+			panic("error writing memory usage: " + err.Error())
+		}
+		**/
 		recordDataDuration(durationFromStart, psm, stdDev)
 	}
 

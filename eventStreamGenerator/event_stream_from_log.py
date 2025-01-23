@@ -50,6 +50,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
     server_socket.bind((TCP_IP, TCP_PORT))
     server_socket.listen(1)
     print(f"Listening on {TCP_IP}:{TCP_PORT}...")
+    event_counter=0
     while True:
         client_socket, client_address = server_socket.accept()
         print(f"Connection from {client_address} established.")
@@ -58,14 +59,17 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
                 for event in trace:
                     event_string = create_event_xml_string(trace, event)
                     client_socket.sendall(event_string.encode())
-                    time.sleep(0.01)
+                    event_counter+=1
+                    time.sleep(0.0005)
                 final_event_string = create_final_event_xml_string(trace)
                 client_socket.sendall(final_event_string.encode())
-                time.sleep(0.01)
+                time.sleep(0.0005)
+                event_counter+=1
         except Exception as e:
             print(f"An error occurred: {e}")
             client_socket.close()
         finally:
+            print("Ending the run after submitting "+str(event_counter)+ " events")
             client_socket.close()
             print(f"Connection from {client_address} closed.")
             break

@@ -9,44 +9,44 @@ import "fmt"
 // Generated Petri Net Code
 
 var places = []string{
-"n1", "n10", "n11", "n12", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "sink", "source",
+"n1", "n10", "n11", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "sink", "source",
 }
 
 var transitions = []string{
-"A_CANCELLED", "A_DECLINED", "A_PARTLYSUBMITTED", "A_PREACCEPTED", "A_SUBMITTED", "W_Afhandelen leads", "W_Afhandelen leads", "W_Afhandelen leads", "W_Completeren aanvraag", "W_Completeren aanvraag", "W_Completeren aanvraag",
+"Add penalty", "Appeal to Judge", "Create Fine", "Insert Date Appeal to Prefecture", "Insert Fine Notification", "Notify Result Appeal to Offender", "Payment", "Receive Result Appeal from Prefecture", "Send Appeal to Prefecture", "Send Fine", "Send for Credit Collection",
 }
 
 var inputMatrix = [][]int{
 
-    {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0},
-    {0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0},
-    {0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0},
+    {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0},
+    {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
+    {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
+    {0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 }
 
 var outputMatrix = [][]int{
 
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0},
-    {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0},
-    {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
-    {0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0},
+    {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
 }
 
-var initialMarking = []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+var initialMarking = []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 // Indices of transitions associated with gateways
 
@@ -204,6 +204,6 @@ func (wf *WorkflowLogic) GetEnabledTransitionsForTokenId(tokenId int) []string {
 }
 
 func (wf *WorkflowLogic) GetSourceAndSinkIndices() (int, int) {
-    return 13, 12 // source index, sink index
+    return 12, 11 // source index, sink index
 }
 

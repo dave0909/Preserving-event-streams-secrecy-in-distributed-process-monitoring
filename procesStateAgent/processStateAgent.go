@@ -43,10 +43,11 @@ func main() {
 }
 
 func (psa *ProcessStateAgent) connectToEventSteamGenerator() {
+	fmt.Println("Process State Agent running in", psa.Address, " is connecting to the Event Stream Generator running in ", psa.EventStreamGenerator)
 	for {
 		conn, err := net.Dial("tcp", psa.EventStreamGenerator)
 		if err != nil {
-			fmt.Println("Error connecting:", err)
+			//fmt.Println("Error connecting:", err)
 			//os.Exit(1)
 		} else {
 			defer conn.Close()
@@ -98,61 +99,88 @@ func (psa *ProcessStateAgent) readEventStream(conn net.Conn) {
 	for {
 		event, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Error reading from server:", err)
-			break
+			//fmt.Println("Error reading from server:", err)
+		} else {
+			//Register the event timestamp in the mapArrivals
+			if psa.testMode {
+				psa.mu.Lock()
+				// Call the GetCurrentTimestamp method
+				var reply delayargs.TimestampResponse
+				err = psa.delayHubClient.Call("DelayHub.GetCurrentTimestamp", struct{}{}, &reply)
+				psa.mu.Unlock()
+				if err != nil {
+					fmt.Printf("Error calling GetCurrentTimestamp: %v\n", err)
+					os.Exit(1)
+				}
+				// Convert nanoseconds to a readable time
+				psa.mu.Lock()
+				psa.mapArrivals[event] = int(reply.Timestamp)
+				psa.mu.Unlock()
+			}
+			psa.broadcastEvent(event)
 		}
-		if err != nil {
-			log.Fatalf("Failed to parse XES data: %v", err)
-		}
-		//Register the event timestamp in the mapArrivals
-		psa.mapArrivals[event] = int(time.Now().UnixMilli())
-		psa.broadcastEvent(event)
 	}
 }
 
-// Send the event to an RPC server with the sendEvent rpc call
-func (psa *ProcessStateAgent) sendEvent(eventString string, client rpc.Client) {
-	// Connect to the RPC server
-	// Call the SendEvent method
+func (psa *ProcessStateAgent) sendEvent(eventString string, subInd int) {
+	const maxRetries = 3000
 	var reply string
-	eventSubmission := eventsubmission.EventSubmission{EncryptedEvent: eventString, AgentReference: psa.Address}
-	psa.mu.Lock()
-	err := client.Call("EventDispatcher.SendEvent", eventSubmission, &reply)
-	if err != nil {
-		log.Println("Error calling SendEvent: %v", err)
-	} else {
-		if psa.testMode {
-			psa.submittedEvents++
-			var arrivalReply bool
-			arrivalArgs := &delayargs.ArrivalArgs{
-				EventCode:        psa.submittedEvents,
-				ArrivalTimestamp: psa.mapArrivals[eventString],
-			}
-			err = psa.delayHubClient.Call("DelayHub.WriteArrival", arrivalArgs, &arrivalReply)
-			if err != nil {
-				fmt.Printf("Error calling WriteArrival: %v\n", err)
-			} else {
-				fmt.Printf("WriteArrival success: %v\n", arrivalReply)
-			}
-			//TODO: send here the number of the submitted event alongside its timestamp to the delay hub
-
+	for retries := 0; retries <= maxRetries; retries++ {
+		psa.mu.Lock()
+		sub := psa.Subscriptions[subInd]
+		client := sub.ClientConnection
+		lastHeartbeat := sub.Heartbeats[len(sub.Heartbeats)-1]
+		provisioningKey := lastHeartbeat.ProvisioningKey
+		psa.mu.Unlock()
+		// Encrypt the event outside the retry loop to avoid unnecessary re-encryption
+		encryptedEvent, err := psa.encryptEvent(eventString, provisioningKey)
+		if err != nil {
+			fmt.Printf("Error encrypting event: %v with key %v\n", err, eventString, provisioningKey)
+			return
 		}
+
+		eventSubmission := eventsubmission.EventSubmission{
+			EncryptedEvent: encryptedEvent,
+			AgentReference: psa.Address,
+		}
+		psa.mu.Lock()
+		err = client.Call("EventDispatcher.SendEvent", eventSubmission, &reply)
+		if err == nil {
+			// Event sent successfully
+			if psa.testMode {
+				psa.submittedEvents++
+				var arrivalReply bool
+				arrivalArgs := &delayargs.ArrivalArgs{
+					EventCode:        psa.submittedEvents,
+					ArrivalTimestamp: psa.mapArrivals[eventString],
+				}
+
+				arrErr := psa.delayHubClient.Call("DelayHub.WriteArrival", arrivalArgs, &arrivalReply)
+				if arrErr != nil {
+					fmt.Printf("Error calling WriteArrival: %v\n", arrErr)
+				} else {
+					fmt.Printf("WriteArrival success: %v\n", arrivalReply)
+				}
+			}
+			psa.mu.Unlock()
+			return
+		}
+		psa.mu.Unlock()
+		if retries < maxRetries {
+			fmt.Printf("Attempt %d failed: %v with key %v. Retrying immediately...%s\n", retries+1, err, string(provisioningKey), eventString)
+			//time.Sleep(10 * time.Millisecond)
+		} else {
+			fmt.Printf("Failed to send event after %d attempts: %v\n", maxRetries+1, err)
+			panic(string(provisioningKey))
+		}
+
 	}
-	psa.mu.Unlock()
 }
 
 func (psa *ProcessStateAgent) broadcastEvent(eventString string) {
-	for _, sub := range psa.Subscriptions {
-		lastHeartbeat := sub.Heartbeats[len(sub.Heartbeats)-1]
-		provisioningKey := lastHeartbeat.ProvisioningKey
-		encryptedEvent, err := psa.encryptEvent(eventString, provisioningKey)
-		psa.mapArrivals[encryptedEvent] = psa.mapArrivals[eventString]
-		go delete(psa.mapArrivals, eventString)
-		if err != nil {
-			log.Fatalf("Error encrypting event: %v", err)
-		}
+	for subI, _ := range psa.Subscriptions {
 		//TODO: remove go here below if you have issues
-		go psa.sendEvent(encryptedEvent, *sub.ClientConnection)
+		go psa.sendEvent(eventString, subI)
 	}
 }
 
@@ -240,6 +268,8 @@ func (psa *ProcessStateAgent) checkTimeouts() {
 
 // ReceiveHeartbeat processes incoming heartbeat evidence and updates the corresponding subscription.
 func (psa *ProcessStateAgent) ReceiveHeartbeat(evidence *attestation.Evidence, reply *string) error {
+	psa.mu.Lock()
+	defer psa.mu.Unlock()
 	isVerified, provisioningKey := psa.verifyEvidence(*evidence, psa.skipAttestation)
 	if isVerified {
 		if provisioningKey != nil {
@@ -256,6 +286,7 @@ func (psa *ProcessStateAgent) ReceiveHeartbeat(evidence *attestation.Evidence, r
 				*reply = "Subscription not found"
 			}
 		}
+
 	} else {
 		*reply = "Heartbeat verification failed not verified"
 	}

@@ -8,19 +8,21 @@ import (
 	"main/eventDispatcher"
 	"main/processStateManager"
 	"main/utils/attestation"
+	"main/utils/delayargs"
 	"main/utils/xes"
 	"net/http"
 	_ "net/http/pprof"
 	"net/rpc"
 	"os"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"time"
 )
 
 func main() {
-	debug.SetGCPercent(-1)
+	//debug.SetGCPercent(-1)
+	//debug.SetGCPercent(5)
+
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
@@ -80,7 +82,7 @@ func main() {
 	eventDispatcher.SubscribeTo("localhost:6065")
 	// Start recording memory usage
 	if testModeBool {
-		go recordMemoryUsage(10*time.Millisecond, 10*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
+		go recordMemoryUsage(10*time.Millisecond, 20*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
 	}
 	psm.WaitForEvents()
 }
@@ -173,7 +175,6 @@ func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileNam
 	if fileInfo.Size() == 0 {
 		_, _ = file.WriteString("Timestamp,Memory Usage\n")
 	}
-
 	ticker := time.NewTicker(interval)
 
 	defer ticker.Stop()
@@ -191,16 +192,29 @@ func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileNam
 		}()
 	}
 	// Memory usage recording goroutine
+	/**
 	go func() {
+		delaycli, err := rpc.Dial("tcp", "localhost:8388")
+		if err != nil {
+			log.Fatal("Cannot connect to Delay Hub:", err)
+		}
+		for range ticker.C {
+			if psm.FirstInit && psm.TotalCounter < nEvents {
+				go sendMemoryUsage(delaycli)
+			}
+		}
+	}()**/
+
+	go func() {
+
 		for range ticker.C {
 			if psm.FirstInit && psm.TotalCounter < nEvents {
 				var m runtime.MemStats
 				runtime.ReadMemStats(&m)
-
-				currentTime := time.Now().Unix()
+				currentTime := time.Now().UnixMilli()
 				alloc := m.HeapAlloc
 				data := fmt.Sprintf("%d,%d\n", currentTime, alloc)
-				_, _ = file.WriteString(data)
+				go file.WriteString(data)
 			}
 		}
 	}()
@@ -211,4 +225,17 @@ func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileNam
 	}
 
 	fmt.Println("End of the test after", nEvents, "events")
+}
+
+func sendMemoryUsage(delaycli *rpc.Client) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	currentTime := time.Now().UnixMilli()
+	alloc := m.HeapAlloc
+	args := delayargs.MemoryData{
+		Timestamp:   int(currentTime),
+		MemoryUsage: int(alloc),
+	}
+	var reply bool
+	go delaycli.Call("DelayHub.RegisterMemoryUsage", args, &reply)
 }
