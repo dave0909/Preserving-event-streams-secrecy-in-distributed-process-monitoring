@@ -169,6 +169,7 @@ func (psa *ProcessStateAgent) sendEvent(eventString string, subInd int) {
 		if retries < maxRetries {
 			fmt.Printf("Attempt %d failed: %v with key %v. Retrying immediately...%s\n", retries+1, err, string(provisioningKey), eventString)
 			//time.Sleep(10 * time.Millisecond)
+			//panic(string(provisioningKey))
 		} else {
 			fmt.Printf("Failed to send event after %d attempts: %v\n", maxRetries+1, err)
 			panic(string(provisioningKey))

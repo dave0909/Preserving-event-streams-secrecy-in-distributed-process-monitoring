@@ -256,7 +256,8 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		if err := psm.ExternalDelayHub.Call("DelayHub.WriteMemoryUsage", struct{}{}, &reply); err != nil {
 			panic("error writing memory usage: " + err.Error())
 		}
-		**/
+		 **/
+
 		recordDataDuration(durationFromStart, psm, stdDev)
 	}
 
