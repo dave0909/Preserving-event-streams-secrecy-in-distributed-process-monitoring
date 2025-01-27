@@ -138,7 +138,7 @@ func (d *DelayHub) writeRecordIfComplete(eventCode int) error {
 			return err
 		}
 		delete(d.eventStore, eventCode)
-		fmt.Println("Recorded complete event for code: ", eventCode, " and wrote to CSV.")
+		//fmt.Println("Recorded complete event for code: ", eventCode, " and wrote to CSV.")
 	}
 	return nil
 }
@@ -154,8 +154,8 @@ func (d *DelayHub) WriteArrival(args *delayargs.ArrivalArgs, reply *bool) error 
 	if event.ArrivalTimestamp != 0 {
 		return errors.New("arrival time already recorded for this event code")
 	}
-	event.ArrivalTimestamp = args.ArrivalTimestamp
-	fmt.Println("Recorded arrival for event code: ", args.EventCode, " with timestamp: ", args.ArrivalTimestamp)
+	event.ArrivalTimestamp = int(time.Now().UnixNano())
+	//fmt.Println("Recorded arrival for event code: ", args.EventCode, " with timestamp: ", int(time.Now().UnixNano()))
 	err := d.writeRecordIfComplete(args.EventCode)
 	if err != nil {
 		return err
@@ -176,7 +176,7 @@ func (d *DelayHub) WriteCompletion(args *delayargs.CompletionArgs, reply *bool) 
 		return errors.New("completion time already recorded for this event code")
 	}
 	event.CompletionTimestamp = int(time.Now().UnixNano())
-	fmt.Println("Recorded completion for event code: ", args.EventCode, " with timestamp: ", args.CompletionTimestamp)
+	//fmt.Println("Recorded completion for event code: ", args.EventCode, " with timestamp: ", int(time.Now().UnixNano()))
 	err := d.writeRecordIfComplete(args.EventCode)
 	if err != nil {
 		return err

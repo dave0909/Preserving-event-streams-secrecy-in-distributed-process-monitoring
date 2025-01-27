@@ -10,17 +10,16 @@ import (
 	"fmt"
 	"github.com/edgelesssys/ego/ecrypto"
 	"github.com/edgelesssys/ego/enclave"
-	"net"
-
 	"log"
+	"net"
+	"net/rpc"
+	"time"
+
 	attestation "main/utils/attestation"
 	"main/utils/eventsubmission"
 	"main/utils/xes"
-	"net/rpc"
-	"time"
 )
 
-// go run eventDispatcher.go localhost:6969
 // EventDispatcher struct
 type EventDispatcher struct {
 	EventChannel        chan xes.Event
@@ -45,10 +44,6 @@ func (ed *EventDispatcher) GetEvidence(nonce string, reply *attestation.Evidence
 		}
 	}
 	encodedReport := base64.StdEncoding.EncodeToString(report[:])
-	if err != nil {
-		return err
-	}
-	//TODO: REMOVE THE PROVISIONING KEY FROM THE TRANSMITTED REPORT
 	newEvidence := attestation.Evidence{Report: encodedReport, Timestamp: time.Now().Unix(), ProvisioningKey: provisioningKey}
 	*reply = newEvidence
 	return nil
@@ -56,63 +51,62 @@ func (ed *EventDispatcher) GetEvidence(nonce string, reply *attestation.Evidence
 
 // SendEvent method to handle incoming events in string format
 func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmission, reply *string) error {
-	//The reveiveing event should arrive as an encrypted message with the Provisioning generated for the last heartbeat
-	// Parse the event string
-	//fmt.Println("Received event: ", eventSubmission.EncryptedEvent)
-	//Find the key for the subscription that sent the event
-	var key []byte
+	var subscriptionHeartbeats []attestation.Evidence
 	for _, subscription := range ed.Subscriptions[eventSubmission.AgentReference] {
 		if len(subscription.Heartbeats) > 0 {
-			key = subscription.Heartbeats[len(subscription.Heartbeats)-1].ProvisioningKey
+			subscriptionHeartbeats = subscription.Heartbeats
 			break
 		}
 	}
-	if key == nil {
-		return fmt.Errorf("No key found for the subscription")
+
+	if len(subscriptionHeartbeats) == 0 {
+		return fmt.Errorf("No heartbeats found for the subscription")
 	}
-	decryptedEvent, err := ed.decryptEvent(eventSubmission.EncryptedEvent, key)
+
+	decryptedEvent, err := ed.decryptEvent(eventSubmission.EncryptedEvent, subscriptionHeartbeats)
 	if err != nil {
 		fmt.Println("Error decrypting event: ", err)
 		return errors.New("Error decrypting event: " + err.Error())
 	}
+
 	event, err := xes.ParseXes(decryptedEvent)
 	if err != nil {
 		fmt.Println("Error parsing event: ", err)
 		return errors.New("Error parsing event:  " + err.Error())
 	}
 
-	//TODO:THIS PART HERE IS NEW. Remove it to come back as before------------------------------------------------------------------------------------------------
-	//This part here below is used to filter unnecessary attributes and avoid the process state manager to process useless data
-	parsedEvent := xes.Event{ActivityID: event.ActivityID, CaseID: event.CaseID, Timestamp: event.Timestamp, Attributes: make(map[string]interface{})}
-	//Check if the eventId variable is a key in the "attribute_extraction" field of the extraction manifest
-	if _, ok := ed.AttributeExtractors[event.ActivityID]; ok {
-		//If the eventId is a key in the "attribute_extraction" field, extract the attributes
-		attributeExtractors := ed.AttributeExtractors[event.ActivityID].([]interface{})
-		for _, attrName := range attributeExtractors {
-			//If attrName is a key in data
-			if _, ok := event.Attributes[attrName.(string)]; ok {
-				parsedEvent.Attributes[attrName.(string)] = event.Attributes[attrName.(string)]
+	parsedEvent := xes.Event{
+		ActivityID: event.ActivityID,
+		CaseID:     event.CaseID,
+		Timestamp:  event.Timestamp,
+		Attributes: make(map[string]interface{}),
+	}
+
+	if extractors, ok := ed.AttributeExtractors[event.ActivityID]; ok {
+		for _, attrName := range extractors.([]interface{}) {
+			if val, exists := event.Attributes[attrName.(string)]; exists {
+				parsedEvent.Attributes[attrName.(string)] = val
 			}
 		}
-		//psm.ProcessState.EventLog = append(psm.ProcessState.EventLog, eventLogEntry)
 	}
-	event = nil
-	//TODO:END OF THE NEW PART------------------------------------------------------------------------
+
+	if _, testCounterExists := event.Attributes["ESG_test_counter"]; testCounterExists {
+		parsedEvent.Attributes["ESG_test_counter"] = event.Attributes["ESG_test_counter"]
+	}
+
 	if ed.ExternalQueryClient != nil {
-		// Send the event to the external query server
-		var externalQueryReply string
-		//Convert decrypted event to a byte array
-		//TODO: OLD VERSION here below. comment and delete the eventString variable to come back.
-		//byteDecryptedEvent := []byte(decryptedEvent)
 		eventString, err := xes.Stringify(parsedEvent)
 		if err != nil {
 			return errors.New("Error parsing event to be put in the external queue: " + err.Error())
 		}
+
 		byteDecryptedEvent := []byte(eventString)
 		sealedEvent, err := ecrypto.SealWithUniqueKey(byteDecryptedEvent, []byte(""))
 		if err != nil {
 			fmt.Println("Error sealing event: ", err)
 		}
+
+		var externalQueryReply string
 		err = ed.ExternalQueryClient.Call("Queue.AddEvent", sealedEvent, &externalQueryReply)
 		if err != nil {
 			fmt.Println("Error calling external query server: ", err)
@@ -120,6 +114,7 @@ func (ed *EventDispatcher) SendEvent(eventSubmission eventsubmission.EventSubmis
 	} else {
 		ed.EventChannel <- parsedEvent
 	}
+
 	*reply = "Event processed successfully"
 	return nil
 }
@@ -135,65 +130,51 @@ func (ed *EventDispatcher) StartRPCServer(addr string) {
 	rpc.Accept(listener)
 }
 
-//func main() {
-//	addr := os.Args[1]
-//	eventChannel := make(chan xes.Event)
-//	psm := processStateManager.InitProcessStateManager(eventChannel)
-//	eventDispatcher := &EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription)}
-//	go eventDispatcher.StartRPCServer(addr)
-//	eventDispatcher.SubscribeTo("localhost:6869")
-//	psm.WaitForEvents()
-//}
-
-// Check for subscription timeouts
-func (ed *EventDispatcher) checkTimeouts() {
-
-}
-
+// SubscribeTo method to subscribe to a process state agent
 func (ed *EventDispatcher) SubscribeTo(address string) {
 	client, err := rpc.Dial("tcp", address)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
+
 	var reply string
 	err = client.Call("ProcessStateAgent.Subscribe", ed.Address, &reply)
 	if err != nil {
 		log.Fatalf("Error calling RequestSubscription: %v", err)
 	}
+
 	if reply == "subscription denied" {
 		log.Fatalf("Subscription failed: %v", reply)
-	} else {
-		//parse the response into a subscription object
-		subscription := attestation.Subscription{}
-		err = json.Unmarshal([]byte(reply), &subscription)
-		if err != nil {
-			log.Fatalf("Error unmarshalling subscription: %v", err)
-		}
-		subscription.ClientConnection = client
-		//chek if the subscription exists
-		if _, ok := ed.Subscriptions[subscription.AgentAddress]; !ok {
-			ed.Subscriptions[subscription.AgentAddress] = make([]attestation.Subscription, 0)
-		}
-		//add the subscription to the list of subscriptions
-		ed.Subscriptions[subscription.AgentAddress] = append(ed.Subscriptions[subscription.AgentAddress], subscription)
-		go ed.sendHeartbeat(subscription.TimeInterval, subscription)
 	}
 
+	subscription := attestation.Subscription{}
+	err = json.Unmarshal([]byte(reply), &subscription)
+	if err != nil {
+		log.Fatalf("Error unmarshalling subscription: %v", err)
+	}
+
+	subscription.ClientConnection = client
+
+	if _, ok := ed.Subscriptions[subscription.AgentAddress]; !ok {
+		ed.Subscriptions[subscription.AgentAddress] = make([]attestation.Subscription, 0)
+	}
+
+	ed.Subscriptions[subscription.AgentAddress] = append(ed.Subscriptions[subscription.AgentAddress], subscription)
+	go ed.sendHeartbeat(subscription.TimeInterval, subscription)
 }
 
-// Golang routine that sleeps for a given time interval and then sends a heartbeat
+// sendHeartbeat sends periodic heartbeats for a subscription
 func (ed *EventDispatcher) sendHeartbeat(interval int, subscription attestation.Subscription) {
 	for {
-		time.Sleep(time.Duration(interval) * time.Second)
-		// Create a new evidence
-		//TODO: THE CLOCK SHOULD BE THE SAME OF THE REPORT
-		//Generate a symetric key for the evidence
+		time.Sleep((time.Duration(interval) * time.Second) - (time.Duration(2) * time.Second))
+		fmt.Println("Sending attestation heartbeat after ", interval-2, "seconds")
+
 		provisioningKey, err := ed.generateProvisioningKey()
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		}
-		//Maybe we need the byte version of the key, not formatted in this way
+
 		var report []byte
 		if !ed.IsInSimulation {
 			report, err = enclave.GetRemoteReport(provisioningKey)
@@ -202,36 +183,43 @@ func (ed *EventDispatcher) sendHeartbeat(interval int, subscription attestation.
 				return
 			}
 		}
+
 		encodedReport := base64.StdEncoding.EncodeToString(report[:])
-		if err != nil {
-			fmt.Println(err.Error())
+		evidence := attestation.Evidence{
+			Report:          encodedReport,
+			Timestamp:       time.Now().Unix(),
+			SubscriptionId:  subscription.Id,
+			ProvisioningKey: provisioningKey,
 		}
-		//TODO: REMOVE THE PROVISIONING KEY FROM THE TRANSMITTED REPORT
-		evidence := attestation.Evidence{Report: encodedReport, Timestamp: time.Now().Unix(), SubscriptionId: subscription.Id, ProvisioningKey: provisioningKey}
+
 		client := subscription.ClientConnection
 		var reply string
 		err = client.Call("ProcessStateAgent.ReceiveHeartbeat", evidence, &reply)
 		if err != nil {
 			log.Fatalf("Error calling ReceiveHeartbeat: %v", err)
 		}
+
 		if reply == "heartbeat received" {
-			//Add the evidence to the subscription
-			//subscription.Heartbeats = subscription.Heartbeats[:0]
-			subscription.Heartbeats = nil
-			subscription.Heartbeats = append(subscription.Heartbeats, evidence)
-			//Update the subscription in the slice
+			// Modify heartbeat recording to keep at most two heartbeats
 			for i, sub := range ed.Subscriptions[subscription.AgentAddress] {
 				if sub.Id == subscription.Id {
-					ed.Subscriptions[subscription.AgentAddress][i] = subscription
+					if len(sub.Heartbeats) >= 2 {
+						// Remove the first (oldest) heartbeat
+						sub.Heartbeats = sub.Heartbeats[1:]
+					}
+					// Append the new heartbeat
+					sub.Heartbeats = append(sub.Heartbeats, evidence)
+
+					// Update the subscription in the slice
+					ed.Subscriptions[subscription.AgentAddress][i] = sub
 					break
 				}
 			}
 		}
 	}
-
 }
 
-// Function to generate a random symmetric AES key
+// generateProvisioningKey creates a random symmetric AES key
 func (ed *EventDispatcher) generateProvisioningKey() ([]byte, error) {
 	key := make([]byte, 32) // AES-256
 	_, err := rand.Read(key)
@@ -241,27 +229,62 @@ func (ed *EventDispatcher) generateProvisioningKey() ([]byte, error) {
 	return key, nil
 }
 
-func (ed *EventDispatcher) decryptEvent(eventString string, key []byte) (string, error) {
+// decryptEvent attempts to decrypt an event using available heartbeat keys
+func (ed *EventDispatcher) decryptEvent(eventString string, subscriptionHeartbeats []attestation.Evidence) (string, error) {
+	if len(subscriptionHeartbeats) == 0 {
+		return "", fmt.Errorf("no heartbeats available for decryption")
+	}
+
+	// Try decryption with the most recent heartbeat key first
+	lastHeartbeatIndex := len(subscriptionHeartbeats) - 1
+	lastKey := subscriptionHeartbeats[lastHeartbeatIndex].ProvisioningKey
+
+	decryptedEvent, err := ed.tryDecryptWithKey(eventString, lastKey)
+	if err == nil {
+		return decryptedEvent, nil
+	}
+
+	// If first decryption fails and we have more than one heartbeat, try the previous one
+	if len(subscriptionHeartbeats) > 1 {
+		previousKey := subscriptionHeartbeats[lastHeartbeatIndex-1].ProvisioningKey
+
+		decryptedEvent, err := ed.tryDecryptWithKey(eventString, previousKey)
+		if err == nil {
+			return decryptedEvent, nil
+		}
+	}
+
+	// If all decryption attempts fail, return the last error
+	return "", fmt.Errorf("failed to decrypt event with available keys: %v", err)
+}
+
+// tryDecryptWithKey attempts to decrypt using a specific key
+func (ed *EventDispatcher) tryDecryptWithKey(eventString string, key []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
 	}
+
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", err
 	}
+
 	ciphertext, err := base64.StdEncoding.DecodeString(eventString)
 	if err != nil {
 		return "", err
 	}
+
 	nonceSize := aesGCM.NonceSize()
 	if len(ciphertext) < nonceSize {
 		return "", fmt.Errorf("ciphertext too short")
 	}
+
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return "", err
 	}
+
 	return string(plaintext), nil
 }

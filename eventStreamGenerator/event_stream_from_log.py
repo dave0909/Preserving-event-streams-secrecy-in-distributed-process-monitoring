@@ -17,15 +17,16 @@ BUFFER_SIZE = 1024
 log = xes_importer.apply(args.log_path)
 
 # Function that returns a standard event at the end trace. The result value is a xes string
-def create_final_event_xml_string(trace):
+def create_final_event_xml_string(trace, event_counter):
     trace_name = trace.attributes["concept:name"] if "concept:name" in trace.attributes else "case_unknown"
     event_xml = f"<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version=\"1.0RC7\" xes.features=\"nested-attributes\" xes.version=\"1.0\" xmlns=\"http://www.xes-standard.org/\">"
     event_xml += f"<trace><string key=\"concept:name\" value=\"{trace_name}\"/><event>"
-    event_xml += "<string key=\"concept:name\" value=\"__END__\"/><date key=\"time:timestamp\" value=\"2014-05-19T20:05:46.000+02:00\"/></event>"
+    event_xml += "<string key=\"concept:name\" value=\"__END__\"/><date key=\"time:timestamp\" value=\"2014-05-19T20:05:46.000+02:00\"/>"
+    event_xml += f"<int key=\"ESG_test_counter\" value=\"{event_counter}\"/></event>"
     event_xml += "</trace></log></org.deckfour.xes.model.impl.XTraceImpl>\n"
     return event_xml
 
-def create_event_xml_string(trace, event):
+def create_event_xml_string(trace, event, event_counter):
     trace_name = trace.attributes["concept:name"] if "concept:name" in trace.attributes else "case_unknown"
     event_xml = f"<org.deckfour.xes.model.impl.XTraceImpl><log openxes.version=\"1.0RC7\" xes.features=\"nested-attributes\" xes.version=\"1.0\" xmlns=\"http://www.xes-standard.org/\">"
     event_xml += f"<trace><string key=\"concept:name\" value=\"{trace_name}\"/><event>"
@@ -42,6 +43,7 @@ def create_event_xml_string(trace, event):
             event_xml += f"<date key=\"{key}\" value=\"{value.isoformat()}\"/>"
         elif isinstance(value, pm4py.objects.log.obj.Event):
             event_xml += f"<date key=\"{key}\" value=\"{value.isoformat()}\"/>"
+    event_xml += f"<int key=\"ESG_test_counter\" value=\"{event_counter}\"/>"
     event_xml += "</event></trace></log></org.deckfour.xes.model.impl.XTraceImpl>\n"
     return event_xml
 
@@ -57,14 +59,14 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         try:
             for trace in log:
                 for event in trace:
-                    event_string = create_event_xml_string(trace, event)
-                    client_socket.sendall(event_string.encode())
                     event_counter+=1
+                    event_string = create_event_xml_string(trace, event, event_counter)
+                    client_socket.sendall(event_string.encode())
                     time.sleep(0.0005)
-                final_event_string = create_final_event_xml_string(trace)
+                event_counter+=1
+                final_event_string = create_final_event_xml_string(trace, event_counter)
                 client_socket.sendall(final_event_string.encode())
                 time.sleep(0.0005)
-                event_counter+=1
         except Exception as e:
             print(f"An error occurred: {e}")
             client_socket.close()

@@ -1,13 +1,11 @@
 package delayargs
 
 type ArrivalArgs struct {
-	EventCode        int
-	ArrivalTimestamp int
+	EventCode int
 }
 
 type CompletionArgs struct {
-	EventCode           int
-	CompletionTimestamp int
+	EventCode int
 }
 
 type TimestampResponse struct {

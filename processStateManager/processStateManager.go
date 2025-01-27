@@ -218,16 +218,16 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 		//fmt.Println("Sending event to the delay hub")
 		// Invoke WriteCompletion
 		// Call the GetCurrentTimestamp method
+		codeTest := data["ESG_test_counter"].(int)
 		completionArgs := &delayargs.CompletionArgs{
-			EventCode:           psm.TotalCounter,
-			CompletionTimestamp: int(time.Now().UnixNano()),
+			EventCode: codeTest,
 		}
 		var completionReply bool
 		err := psm.ExternalDelayHub.Call("DelayHub.WriteCompletion", completionArgs, &completionReply)
 		if err != nil {
-			fmt.Printf("Error calling WriteCompletion: %v\n", err)
+			//fmt.Printf("Error calling WriteCompletion: %v\n", err)
 		} else {
-			fmt.Printf("WriteCompletion success: %v\n", completionReply)
+			//fmt.Printf("WriteCompletion success: %v\n", completionReply)
 		}
 	}
 
@@ -248,8 +248,7 @@ func (psm *ProcessStateManager) HandleEvent(eventId string, caseId string, times
 	// Calculate standard deviation
 	variance := psm.m2 / float64(psm.ProcessState.Counter)
 	stdDev := math.Sqrt(variance)
-	//fmt.Printf("Time from start of the run:%f, Current mean (s): %f,Min duration (s): %f, Max duration (s): %f, Std Dev (s): %f\n", durationFromStart.Seconds(), psm.mean, psm.minDuration, psm.maxDuration, stdDev)
-	fmt.Println("Processed events: ", psm.TotalCounter, " out of: ", psm.stopEventNumebr)
+	//fmt.Println("Processed events: ", psm.TotalCounter, " out of: ", psm.stopEventNumebr)
 	if psm.TotalCounter == psm.stopEventNumebr && psm.stopEventNumebr != 0 {
 		/**
 		var reply bool
@@ -288,11 +287,11 @@ func (psm *ProcessStateManager) updateControlFlow(eventId string, caseId string,
 		if petrinet.ContainsTokenId(psm.WorkflowLogic.Petrinet.TokenIds[indexOfSink], tokenId) {
 			// Set the status of the case to success
 			psm.ProcessState.WfState.WorkflowStatus[caseId] = 3
-			fmt.Println("Case: ", caseId, " has completed successfully")
+			//fmt.Println("Case: ", caseId, " has completed successfully")
 		} else {
 			// Set the status of the case to violated
 			psm.ProcessState.WfState.WorkflowStatus[caseId] = 2
-			fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
+			//fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
 
 		}
 	}
@@ -318,11 +317,11 @@ func (psm *ProcessStateManager) updateControlFlow(eventId string, caseId string,
 			if error != nil {
 				//If the transition failed, generate a new workflow violation
 				psm.initWorkflowViolation(eventId, caseId, timestamp, error)
-				fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
+				//fmt.Println("New workflow violation for case: ", caseId, " event: ", eventId)
 			} else {
 				//If the transition was successful, update the workflow state
 				psm.updateWorkflowState(caseId)
-				fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
+				//fmt.Println("Succesful state update with case: ", caseId, " event: ", eventId, " next activities: ", psm.ProcessState.WfState.GetNextActivities(caseId))
 			}
 		}
 		//TODO: ADD HERE THE WORKFLOW UDPATE EXTERNALIZATION

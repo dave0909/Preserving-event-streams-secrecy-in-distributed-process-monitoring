@@ -82,7 +82,7 @@ func main() {
 	eventDispatcher.SubscribeTo("localhost:6065")
 	// Start recording memory usage
 	if testModeBool {
-		go recordMemoryUsage(10*time.Millisecond, 20*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
+		go recordMemoryUsage(10*time.Millisecond, 50*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
 	}
 	psm.WaitForEvents()
 }

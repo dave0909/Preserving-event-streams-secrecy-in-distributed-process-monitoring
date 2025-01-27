@@ -832,8 +832,8 @@ func (ccl *ComplianceCheckingLogic) EvaluateEventLog(eventLog map[string][]map[s
 							for caseId, isTrue := range resultValueMap {
 								if isTrue.(bool) {
 									constraint.ConstraintState[caseId] = ConstraintState(nextState)
-									fmt.Printf("Constraint %s transitioned from %s to %s for case %s", constraint.name, stateName(currentState), stateName(ConstraintState(nextState)), caseId)
-									fmt.Println()
+									//fmt.Printf("Constraint %s transitioned from %s to %s for case %s", constraint.name, stateName(currentState), stateName(ConstraintState(nextState)), caseId)
+									//fmt.Println()
 									resultMap[traceId] = nextState
 									transitionFound = false
 									//TODO: set the above variable to true to enable the recursive inspection of the constraints
