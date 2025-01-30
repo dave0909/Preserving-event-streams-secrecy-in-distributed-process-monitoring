@@ -62,11 +62,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
                     event_counter+=1
                     event_string = create_event_xml_string(trace, event, event_counter)
                     client_socket.sendall(event_string.encode())
-                    time.sleep(0.0005)
+                    #time.sleep(0.0005)
                 event_counter+=1
                 final_event_string = create_final_event_xml_string(trace, event_counter)
                 client_socket.sendall(final_event_string.encode())
-                time.sleep(0.0005)
+                #time.sleep(0.0005)
         except Exception as e:
             print(f"An error occurred: {e}")
             client_socket.close()

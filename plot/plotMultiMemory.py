@@ -10,8 +10,8 @@ from datetime import datetime
 #For trafficFinesTests
 df_simulation = pd.read_csv('../data/testResults/24.01.2025/motivating/memory_usage_motivating.csv', decimal='.', header=0)
 df_sepsis = pd.read_csv('../data/testResults/24.01.2025/sepsis/memory_usage_sepsis.csv', decimal='.', header=0)
-df_volvo = pd.read_csv('../data/testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
-df_bpic2012 = pd.read_csv('../data/testResults/24.01.2025/bpic2012/memory_usage_bpic2012.csv', decimal='.', header=0)
+df_volvo = pd.read_csv('../data/testResults/27.01.2025/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
+df_bpic2012 = pd.read_csv('../data/testResults/27.01.2025/bpic2012/memory_usage_bpic2012.csv', decimal='.', header=0)
 
 
 
@@ -27,20 +27,29 @@ df_sepsis.index = df_sepsis.index + 1  # shifting index
 df_sepsis.sort_index(inplace=True)
 
 
-df_volvo=df_volvo[:len(df_simulation)]
+#df_volvo=df_volvo[:len(df_simulation)]
 df_volvo.loc[-1] = [min(df_volvo['Timestamp']) - 1, 0]  # adding a row
 df_volvo.index = df_volvo.index + 1  # shifting index
 df_volvo.sort_index(inplace=True)
 
-df_bpic2012=df_bpic2012[:len(df_simulation)]
+#df_bpic2012=df_bpic2012[:len(df_simulation)]
 df_bpic2012.loc[-1] = [min(df_bpic2012['Timestamp']) - 1, 0]  # adding a row
 df_bpic2012.index = df_bpic2012.index + 1  # shifting index
 df_bpic2012.sort_index(inplace=True)
 
 #Sample the df_volvo dataset from 1 point every 10 ms to 1 point every 500 ms
-df_volvo = df_volvo.iloc[::10, :]
+df_volvo = df_volvo.iloc[::15, :]
 #Sample the df_bpic2012 dataset from 1 point every 10 ms to 1 point every 500 ms
-df_bpic2012 = df_bpic2012.iloc[::10, :]
+df_simulation = df_simulation.iloc[::10, :]
+df_bpic2012 = df_bpic2012.iloc[::25, :]
+df_sepsis = df_sepsis.iloc[::2, :]
+
+#Sample the df_volvo dataset from 1 point every 10 ms to 1 point every 500 ms
+#df_volvo = df_volvo.iloc[::15, :]
+#Sample the df_bpic2012 dataset from 1 point every 10 ms to 1 point every 500 ms
+#df_simulation = df_simulation.iloc[::10, :]
+#df_bpic2012 = df_bpic2012.iloc[::25, :]
+#df_sepsis = df_sepsis.iloc[::2, :]
 
 
 # Convert in datetime
@@ -103,18 +112,19 @@ pd.options.display.float_format = '{:.2f}'.format
 # PLOT
 plt.style.use("seaborn-v0_8-bright")
 plt.figure(figsize=(16,9))
-plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='Road traffic fines (sampled)', color='blue', linewidth=2, marker = '', markersize=1 , alpha=0.7)
 
-plt.plot(result_bpic2012['Durata Normalizzata'], result_bpic2012['Memory usage (MB)'], label='BPIC2012 (sampled)', color='red', linewidth=2, marker = '', markersize=2 , alpha=1)
+plt.plot(result_bpic2012['Durata Normalizzata'], result_bpic2012['Memory usage (MB)'], label='BPIC2012 (sampled)', color='green', linewidth=4, marker = '', markersize=2 , alpha=1)
+plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='Road Traffic Fines (sampled)', color='#FF204E', linewidth=4, marker = '', markersize=1 , alpha=0.9)
 
-plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], label='Motivating scenario', color='magenta', linewidth=2, marker = '', markersize=1, alpha=0.7)
+
+plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], label='Motivating Scenario', color='steelblue', linewidth=4, marker = '', markersize=1, alpha=1)
 #plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='Road Traffic Fines (GC 01)', color='coral', linewidth=3, marker = '', markersize=2, alpha=1)
 
-plt.plot(result_sepsis['Durata Normalizzata'], result_sepsis['Memory usage (MB)'], label='Sepsis', color='orange', linewidth=2, marker = '', markersize=2, alpha=0.7)
+plt.plot(result_sepsis['Durata Normalizzata'], result_sepsis['Memory usage (MB)'], label='Sepsis', color='#ff7f00', linewidth=4, marker = '', markersize=1, alpha=1)
 
 
 
-
+#4daf4a
 # Create a line plot for the dataset volvo
 
 # Create a line plot for the dataset sepsis
@@ -131,8 +141,8 @@ plt.ylabel('Memory usage (MB)', fontsize = 30,  labelpad= 15)
 plt.grid(True, linestyle='--')
 plt.tight_layout()
 
-plt.xlim([0, 100])
-plt.ylim([0,25])
+plt.xlim([-3, 100])
+plt.ylim([0,23])
 
 
 plt.legend (loc='upper left', fontsize=25)
@@ -140,6 +150,6 @@ plt.legend (loc='upper left', fontsize=25)
 #plt.fill_between(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'azure')
 plt.tight_layout()
 #plt.savefig('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_memoryusage/memoryusage3.pdf')
-plt.savefig('../data/testResults/24.01.2025/memoryusageMultiplot_GC.pdf')
+plt.savefig('../data/testResults/27.01.2025/memoryusageMultiplot.pdf')
 #plt.show()
 exit()

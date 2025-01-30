@@ -9,7 +9,7 @@ run_process_state_agent() {
 run_process_vault() {
     # Change to the directory where the main executable is located
     cd ../..
-    python3 pv4.py ./data/PNML/bpic2012top10alpha.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/bpic2012constraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_bpic2012.json false true  275287 false 200
+    python3 pv4.py ./data/PNML/bpic2012top10alpha.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/bpic2012constraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_bpic2012.json false true  42740 false 200
     # Change back to the original directory
     cd -
 }
@@ -42,7 +42,7 @@ run_process_state_agent &
 sleep 2
 
 run_process_vault &
-sleep 25
+sleep 20
 
 run_event_stream_generator &
 

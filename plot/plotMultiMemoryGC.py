@@ -2,9 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Read CSV files
-df_simulation = pd.read_csv('../data/testResults/22.01.205/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
-df_sepsis = pd.read_csv('../data/testResults/22.01.205/trafficFines/memory_usage_trafficFines_GC10ms.csv', decimal='.', header=0)
-df_volvo = pd.read_csv('../data/testResults/22.01.205/trafficFines/memory_usage_trafficFines_50ms.csv', decimal='.', header=0)
+df_simulation = pd.read_csv('../data/testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
+df_sepsis = pd.read_csv('../data/testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GC10ms.csv', decimal='.', header=0)
+df_volvo = pd.read_csv('../data/testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GC50ms.csv', decimal='.', header=0)
 
 # Convert timestamps from milliseconds to seconds
 df_simulation['Timestamp'] /= 1000
@@ -20,7 +20,7 @@ df_sepsis.loc[-1] = [df_sepsis['Timestamp'].min() - 1, 0]
 df_sepsis.index = df_sepsis.index + 1
 df_sepsis.sort_index(inplace=True)
 
-df_volvo = df_volvo[:len(df_simulation)]
+#df_volvo = df_volvo[:len(df_simulation)]
 df_volvo.loc[-1] = [df_volvo['Timestamp'].min() - 1, 0]
 df_volvo.index = df_volvo.index + 1
 df_volvo.sort_index(inplace=True)
@@ -71,14 +71,14 @@ plt.figure(figsize=(16, 9))
 
 # Add lines
 plt.plot(result['Completion Percentage'], result['Memory usage (MB)'],
-         label='Default garbage collection', color='red',
+         label='Default garbage collection', color='#FF204E',
          linewidth=1, marker='', markersize=2, alpha=1)
 plt.plot(result_volvo['Completion Percentage'], result_volvo['Memory usage (MB)'],
-         label='Custom garbage collection 1', color='#21fc0d',
-         linewidth=1, marker='', markersize=2, alpha=0.7)
-plt.plot(result_sepsis['Completion Percentage'], result_sepsis['Memory usage (MB)'],
-         label='Custom garbage collection 2', color='magenta',
+         label='Custom garbage collection 1', color='#1abc9c',
          linewidth=1, marker='', markersize=2, alpha=0.8)
+plt.plot(result_sepsis['Completion Percentage'], result_sepsis['Memory usage (MB)'],
+         label='Custom garbage collection 2', color='blue',
+         linewidth=1, marker='', markersize=2, alpha=0.7)
 
 plt.axhline(y=185.4, color='black', linestyle='dashed',
             label="Total log size", linewidth=4)
@@ -86,11 +86,11 @@ plt.axhline(y=185.4, color='black', linestyle='dashed',
 # Add duration text outside the chart (right of the y-axis)
 text_offset = 5  # Offset to position the text outside the chart
 plt.text(100, last_simulation_y, f"{duration_simulation}",
-         color='red', fontsize=20, va='center', ha='left')
-plt.text(100, last_volvo_y+6, f"{duration_volvo}",
-         color='#21fc0d', fontsize=20, va='center', ha='left')
+         color='#FF204E', fontsize=23, va='center', ha='left')
+plt.text(100, last_volvo_y+13, f"{duration_volvo}",
+         color='#1abc9c', fontsize=23, va='center', ha='left')
 plt.text(100, last_sepsis_y-5, f"{duration_sepsis}",
-         color='magenta', fontsize=20, va='center', ha='left')
+         color='blue', fontsize=23, va='center', ha='left')
 
 # Customize the plot
 plt.xticks(fontsize=30)
@@ -106,5 +106,5 @@ plt.ylim([0, 300])
 plt.legend(loc='upper left', fontsize=25)
 plt.tight_layout()
 
-plt.savefig('../data/testResults/22.01.205/memoryusageMultiplot_GC.pdf')
+plt.savefig('../data/testResults/24.01.2025/memoryusageMultiplot_GC.pdf')
 exit()

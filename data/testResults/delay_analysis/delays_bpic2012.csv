@@ -1,4 +1,7 @@
-Metric,Value (ms)
+Metric,Value
+first_percentile,1.9998550415039062
+fifth_percentile,78.99999618530273
+tenth_percentile,200.00004768371582
 first_quartile,1888.0000114440918
 median,66223.99997711182
 third_quartile,1155500.7499456406
@@ -8,3 +11,9 @@ all_modes,0.9999275207519531;1.0001659393310547;26.999950408935547;29.0000438690
 std,153623201.2112312
 min,0.9999275207519531
 max,8886264766.99996
+events_below_first_percentile,2333
+events_below_first_percentile_percentage,0.9922677123827184
+events_below_fifth_percentile,11684
+events_below_fifth_percentile_percentage,4.969419610578518
+events_below_tenth_percentile,23458
+events_below_tenth_percentile_percentage,9.977117872727737

@@ -45,7 +45,7 @@ plt.grid(True, linestyle='--')
 plt.xticks(fontsize=30)
 plt.yticks(fontsize=30)
 plt.xlim([0, 101])
-plt.ylim(0, 300)
+plt.ylim(0, 25)
 plt.tight_layout()
 
 # Save the plot
