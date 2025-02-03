@@ -982,7 +982,7 @@ def main():
         command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && OE_SIMULATION=1 ego run main "+event_dispatcher_address+" "+extraction_manifest_file_path +" true"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue + " "+slidingWindowSize
     else:
         print("Building and running the Process Vault in non-simulation mode...")
-        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && GOGC=off ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue+ " "+slidingWindowSize
+        command="CGO_CFLAGS=-I/opt/ego/include CGO_LDFLAGS=-L/opt/ego/lib ego-go build -buildvcs=false main.go && ego sign main && ego run main "+event_dispatcher_address + " "+extraction_manifest_file_path+" false"+ " "+isInTesting+" "+nEvents + " "+withExternalQueue+ " "+slidingWindowSize
         # Execute the build and run commands
     try:
         subprocess.run(
@@ -995,3 +995,5 @@ def main():
         print(e)
 if __name__ == "__main__":
     main()
+
+

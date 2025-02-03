@@ -160,7 +160,9 @@ func (ed *EventDispatcher) SubscribeTo(address string) {
 	}
 
 	ed.Subscriptions[subscription.AgentAddress] = append(ed.Subscriptions[subscription.AgentAddress], subscription)
-	go ed.sendHeartbeat(subscription.TimeInterval, subscription)
+	if !ed.IsInSimulation {
+		go ed.sendHeartbeat(subscription.TimeInterval, subscription)
+	}
 }
 
 // sendHeartbeat sends periodic heartbeats for a subscription

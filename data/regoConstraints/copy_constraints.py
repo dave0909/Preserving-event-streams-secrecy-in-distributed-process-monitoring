@@ -1,11 +1,12 @@
+import os
 def generate_constraint_files(n):
     """
     Generates n copies of each constraint file in the 'motivatingConstraints' folder
     and places them in a new 'generated_constraints' folder.
     """
     # Create the 'generated_constraints' folder if it doesn't exist
-    if not os.path.exists('generated_constraints'):
-        os.makedirs('generated_constraints')
+    if not os.path.exists('motivatingConstraintsCopy_'+str(n)):
+        os.makedirs('motivatingConstraintsCopy_'+str(n))
 
     # Loop through each file in the 'motivatingConstraints' folder
     for filename in os.listdir('motivatingConstraints'):
@@ -14,7 +15,7 @@ def generate_constraint_files(n):
         # Generate n copies of each file
         for i in range(1, n + 1):
             new_filename = f"{base}_{i}{ext}"
-            new_filepath = os.path.join('generated_constraints', new_filename)
+            new_filepath = os.path.join('motivatingConstraintsCopy_'+str(n), new_filename)
 
             # Copy the file contents
             with open(os.path.join('motivatingConstraints', filename), 'r') as f:
@@ -31,4 +32,4 @@ def generate_constraint_files(n):
             print(f"Created {new_filename}")
 
 # Example usage
-generate_constraint_files(2)
+generate_constraint_files(5)

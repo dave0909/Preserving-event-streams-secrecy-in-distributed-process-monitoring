@@ -231,24 +231,26 @@ func (psa *ProcessStateAgent) Subscribe(receiverAddress string, reply *string) e
 }
 
 func (psa *ProcessStateAgent) checkTimeouts() {
-	for {
-		time.Sleep(1 * time.Second)
-		now := time.Now().Unix()
-		psa.subscriptionsMu.Lock()
-		activeSubs := []attestation.Subscription{}
-		for _, sub := range psa.Subscriptions {
-			if sub.IsActive && len(sub.Heartbeats) > 0 {
-				lastHeartbeatTime := sub.Heartbeats[len(sub.Heartbeats)-1].Timestamp
-				if now-lastHeartbeatTime > int64(sub.TimeInterval)+3 {
-					sub.IsActive = false
-					fmt.Println("Deactivate", sub)
-				} else {
-					activeSubs = append(activeSubs, sub)
+	if !psa.skipAttestation {
+		for {
+			time.Sleep(1 * time.Second)
+			now := time.Now().Unix()
+			psa.subscriptionsMu.Lock()
+			activeSubs := []attestation.Subscription{}
+			for _, sub := range psa.Subscriptions {
+				if sub.IsActive && len(sub.Heartbeats) > 0 {
+					lastHeartbeatTime := sub.Heartbeats[len(sub.Heartbeats)-1].Timestamp
+					if now-lastHeartbeatTime > int64(sub.TimeInterval)+3 {
+						sub.IsActive = false
+						fmt.Println("Deactivate", sub)
+					} else {
+						activeSubs = append(activeSubs, sub)
+					}
 				}
 			}
+			psa.Subscriptions = activeSubs
+			psa.subscriptionsMu.Unlock()
 		}
-		psa.Subscriptions = activeSubs
-		psa.subscriptionsMu.Unlock()
 	}
 }
 
