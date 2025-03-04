@@ -1,0 +1,2 @@
+average_delay,median_delay,max_delay,min_delay,percentile_1,percentile_5,percentile_10,percentile_99,total_events
+0.8437669409474039,0.7799195,35.66767,0.359241,0.45987,0.5082719,0.5416849,6.757109497994671,711840
