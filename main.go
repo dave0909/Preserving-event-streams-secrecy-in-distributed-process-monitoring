@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"main/eventDispatcher"
-	"main/processStateManager"
+	"main/processVault/eventDispatcher"
+	"main/processVault/processStateManager"
 	"main/utils/attestation"
-	"main/utils/delayargs"
 	"main/utils/xes"
 	"net/http"
 	_ "net/http/pprof"
@@ -19,13 +18,15 @@ import (
 	"time"
 )
 
+// main is the entry point of the application. It initializes various components
+// and starts the event processing and memory usage recording.
 func main() {
-	//debug.SetGCPercent(-1)
-	//debug.SetGCPercent(5)
-
+	// Start a goroutine to enable pprof for profiling
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
+
+	// Parse command-line arguments
 	addr := os.Args[1]
 	manifestFileName := os.Args[2]
 	simulationMode := os.Args[3]
@@ -33,57 +34,90 @@ func main() {
 	nEvents := os.Args[5]
 	withExternalQuery := os.Args[6]
 	slidingWindowSize := os.Args[7]
-	//Parse the boolean value of the simulation mode
+
+	// Set default value for nEvents if not provided
 	if nEvents == "" {
 		nEvents = "0"
 	}
-	//fmt.Println("Number of processed events: ", nEvents)
+
+	// Convert nEvents to an integer
 	n, err := strconv.Atoi(nEvents)
 	if err != nil {
-		// ... handle error
 		panic(err)
 	}
+
+	// Convert simulationMode to a boolean
 	simulationModeBool, err := strconv.ParseBool(simulationMode)
 	if err != nil {
 		panic(err)
 	}
+
+	// Convert testMode to a boolean
 	testModeBool, err := strconv.ParseBool(testMode)
 	if err != nil {
 		panic(err)
 	}
+
+	// Parse the extraction manifest file if provided
 	attribute_extractors := make(map[string]interface{})
 	if manifestFileName != "" {
 		attribute_extractors = parseExtractionManifest(manifestFileName)
 	} else {
 		attribute_extractors = nil
 	}
+
+	// Convert withExternalQuery to a boolean
 	withExternalQueryBool, err := strconv.ParseBool(withExternalQuery)
 	if err != nil {
 		panic(err)
 	}
+
+	// Initialize the RPC client if external query is enabled
 	var queueClient *rpc.Client
 	if withExternalQueryBool {
-		// Connect to the RPC server
 		queueClient, err = rpc.Dial("tcp", "localhost:8387")
 		if err != nil {
 			log.Fatal("Dialing:", err)
 		}
 	}
+
+	// Convert slidingWindowSize to an integer
 	slidingWindowInt, err := strconv.Atoi(slidingWindowSize)
 	if err != nil {
-		// ... handle error
 		panic(err)
 	}
+
+	// Create a channel for events
 	eventChannel := make(chan xes.Event)
+
+	// Initialize the process state manager
 	psm := processStateManager.InitProcessStateManager(eventChannel, attribute_extractors, n, queueClient, slidingWindowInt)
-	eventDispatcher := &eventDispatcher.EventDispatcher{EventChannel: eventChannel, Address: addr, Subscriptions: make(map[string][]attestation.Subscription), AttributeExtractors: attribute_extractors, IsInSimulation: simulationModeBool, ExternalQueryClient: queueClient}
+
+	// Initialize the event dispatcher
+	eventDispatcher := &eventDispatcher.EventDispatcher{
+		EventChannel:        eventChannel,
+		Address:             addr,
+		Subscriptions:       make(map[string][]attestation.Subscription),
+		AttributeExtractors: attribute_extractors,
+		IsInSimulation:      simulationModeBool,
+		ExternalQueryClient: queueClient,
+	}
+
+	// Start the RPC server for the event dispatcher
 	go eventDispatcher.StartRPCServer(addr)
+
+	// Wait for the RPC server to start
 	time.Sleep(2 * time.Second)
+
+	// Subscribe to events from a specific address
 	eventDispatcher.SubscribeTo("localhost:6065")
-	// Start recording memory usage
+
+	// Start recording memory usage if testConfigurations mode is enabled
 	if testModeBool {
 		go recordMemoryUsage(10*time.Millisecond, 0*time.Millisecond, "data/output/memory_usage.csv", n, &psm)
 	}
+
+	// Wait for all events to be processed
 	psm.WaitForEvents()
 }
 
@@ -157,9 +191,10 @@ func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileNam
 			}
 		}
 	}
-	fmt.Println("End of the test after ", nEvents, "events")
+	fmt.Println("End of the testConfigurations after ", nEvents, "events")
 }
 **/
+
 func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileName string, nEvents int, psm *processStateManager.ProcessStateManager) {
 	// File setup
 	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -192,19 +227,6 @@ func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileNam
 		}()
 	}
 	// Memory usage recording goroutine
-	/**
-	go func() {
-		delaycli, err := rpc.Dial("tcp", "localhost:8388")
-		if err != nil {
-			log.Fatal("Cannot connect to Delay Hub:", err)
-		}
-		for range ticker.C {
-			if psm.FirstInit && psm.TotalCounter < nEvents {
-				go sendMemoryUsage(delaycli)
-			}
-		}
-	}()**/
-
 	go func() {
 
 		for range ticker.C {
@@ -224,18 +246,5 @@ func recordMemoryUsage(interval time.Duration, gcInterval time.Duration, fileNam
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	fmt.Println("End of the test after", nEvents, "events")
-}
-
-func sendMemoryUsage(delaycli *rpc.Client) {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	currentTime := time.Now().UnixMilli()
-	alloc := m.HeapAlloc
-	args := delayargs.MemoryData{
-		Timestamp:   int(currentTime),
-		MemoryUsage: int(alloc),
-	}
-	var reply bool
-	go delaycli.Call("DelayHub.RegisterMemoryUsage", args, &reply)
+	fmt.Println("End of the testConfigurations after", nEvents, "events")
 }

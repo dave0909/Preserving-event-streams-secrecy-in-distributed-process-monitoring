@@ -54,7 +54,7 @@ func SetTimer(duration int) {
 }
 
 func saveToCSV(ramList []int, timestampList []int) error {
-	file, err := os.Create("data/output/test" + time.Now().String() + ".csv")
+	file, err := os.Create("data/output/testConfigurations" + time.Now().String() + ".csv")
 	if err != nil {
 		return err
 	}

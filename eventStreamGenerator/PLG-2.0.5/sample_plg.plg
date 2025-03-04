@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- 
+
+WARNING: Do not manually edit this file, unless you know what you are doing!
+
+This file has been generated with libPlg v.2.0.5.
+Check https://github.com/delas/plg for sources and other stuff.
+
+ -->
+<process>
+	<!-- This is the list of all meta-attributes of the process -->
+	<meta>
+		<LibPLG_NAME>libPlg</LibPLG_NAME>
+		<libPLG_VERSION>2.0.5</libPLG_VERSION>
+		<name>Process_0yiqe67</name>
+		<id>50iie1callua3isv4h7omnobbm</id>
+	</meta>
+	<!-- This is the list of all actual process elements -->
+	<elements>
+		<startEvent id="0"/>
+		<task id="2" name="Dispatch order">
+			<dataObject id="20" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="3" name="Check for raw materials">
+			<dataObject id="22" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="4" name="Prepare spedition">
+			<dataObject id="23" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="5" name="Check payment">
+			<dataObject id="21" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="6" name="Generate invoice">
+			<dataObject id="24" direction="GENERATED"/>
+			<script/>
+		</task>
+		<task id="7" name="Send order">
+			<dataObject id="25" direction="GENERATED"/>
+			<script/>
+		</task>
+		<gateway id="8" type="ParallelGateway"/>
+		<gateway id="9" type="ParallelGateway"/>
+		<endEvent id="1"/>
+		<sequenceFlow id="16" sourceRef="4" targetRef="9"/>
+		<sequenceFlow id="17" sourceRef="6" targetRef="9"/>
+		<sequenceFlow id="18" sourceRef="9" targetRef="7"/>
+		<sequenceFlow id="19" sourceRef="7" targetRef="1"/>
+		<sequenceFlow id="10" sourceRef="2" targetRef="8"/>
+		<sequenceFlow id="11" sourceRef="0" targetRef="2"/>
+		<sequenceFlow id="12" sourceRef="8" targetRef="3"/>
+		<sequenceFlow id="13" sourceRef="8" targetRef="5"/>
+		<sequenceFlow id="14" sourceRef="5" targetRef="6"/>
+		<sequenceFlow id="15" sourceRef="3" targetRef="4"/>
+		<dataObject id="20" owner="2" name="organization" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "organization_A"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="21" owner="5" name="organization" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "organization_B"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="22" owner="3" name="organization" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "organization_C"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="23" owner="4" name="organization" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "organization_C"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="24" owner="6" name="organization" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "organization_B"
+			]]>
+			</script>
+		</dataObject>
+		<dataObject id="25" owner="7" name="organization" type="StringDataObject">
+			<script>
+			<![CDATA[
+from random import randrange
+# This Python script is called for the generation of the string data
+# object. Note that the parameter of this function is the actual case
+# id of the ongoing simulation (you can use this value to customize
+# your data object). The function name has to be "generate".
+
+def generate(caseId):
+	return "organization_A"
+			]]>
+			</script>
+		</dataObject>
+	</elements>
+</process>
