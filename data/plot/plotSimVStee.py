@@ -16,31 +16,39 @@ df['Delta'] = df['TEE'] - df['Simulation']
 
 # Define bar width and x locations
 x = np.arange(len(df))  # the label locations
-width = 0.2  # the width of the bars
+width = 0.26  # slightly wider bars to reduce space between groups
+gap = 0.00    # reduced gap between bars within a group
 
-# Create the plot
-fig, ax = plt.subplots(figsize=(10, 6))
-rects1 = ax.bar(x - width, df['Simulation'], width, label='Native mode', color='blue')
+# Create the plot with square aspect ratio
+fig, ax = plt.subplots(figsize=(11, 8))  # Square figure
+
+# Position bars closer together
+rects1 = ax.bar(x - width - gap/2, df['Simulation'], width, label='Native mode', color='blue')
 rects2 = ax.bar(x, df['TEE'], width, label='TEE mode', color='orange')
-rects3 = ax.bar(x + width, df['Delta'], width, label='Delta', color='magenta')
+rects3 = ax.bar(x + width + gap/2, df['Delta'], width, label='Overhead', color='magenta')
 
 # Add numerical values above each Delta bar
+index=0
 for rect in rects3:
     height = rect.get_height()
-    ax.text(rect.get_x() + rect.get_width()/2, height, f'{height:.2f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
-
+    #Compute the percentage of the overhead with respect to the respective native mode
+    percentage = int(height / df['Simulation'][index] * 100)
+    ax.text(rect.get_x() + rect.get_width()/2 + 0.07, height, f'+{percentage:.0f}%', ha='center', va='bottom', fontsize=22, fontweight='bold')
+    index+=1
 # Labels, title, and custom x-axis labels
-ax.set_xlabel('Event log', fontsize=20, labelpad=18)
-ax.set_ylabel('Average observation lag [ms]', fontsize=21, labelpad=18)
+#ax.set_xlabel('Event log', fontsize=25, labelpad=18)
+ax.set_ylabel('Average observation lag [ms]', fontsize=30, labelpad=18)
 ax.set_xticks(x)
 ax.set_xticklabels(df['Log'], rotation=0, ha='center')
+plt.xticks(fontsize=30)
+plt.yticks(fontsize=30)
 
-plt.xticks(fontsize=19)
-plt.yticks(fontsize=20)
-ax.legend()
-plt.legend(loc='upper left', fontsize=15, edgecolor="black", fancybox=False)
-#plt.grid(True, linestyle='--')
-# Save the plot as a PDF
+# Legend
+plt.legend(loc='upper left', fontsize=22, edgecolor="black", fancybox=False)
+
+# Grid and layout
 plt.grid(axis='y', alpha=0.4)
 plt.tight_layout()
-plt.savefig("../charts/barplotdelay.pdf")
+
+# Save the plot as a PDF
+plt.savefig("../charts/barplotdelay2.pdf")

@@ -4,14 +4,11 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
-
-
-
 #For trafficFinesTests
-df_simulation = pd.read_csv('../data/testResults/24.01.2025/motivating/memory_usage_motivating.csv', decimal='.', header=0)
-df_sepsis = pd.read_csv('../data/testResults/24.01.2025/sepsis/memory_usage_sepsis.csv', decimal='.', header=0)
-df_volvo = pd.read_csv('../data/testResults/27.01.2025/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
-df_bpic2012 = pd.read_csv('../data/testResults/27.01.2025/bpic2012/memory_usage_bpic2012.csv', decimal='.', header=0)
+df_simulation = pd.read_csv('../testResults/24.01.2025/motivating/memory_usage_motivating.csv', decimal='.', header=0)
+df_sepsis = pd.read_csv('../testResults/24.01.2025/sepsis/memory_usage_sepsis.csv', decimal='.', header=0)
+df_volvo = pd.read_csv('../testResults/27.01.2025/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
+df_bpic2012 = pd.read_csv('../testResults/27.01.2025/bpic2012/memory_usage_bpic2012.csv', decimal='.', header=0)
 
 #df_simulation = pd.read_csv('../data/testResults/1.02.2025/NonSimulation_runs/motivating/memory_usage_motivating.csv', decimal='.', header=0)
 #df_sepsis = pd.read_csv('../data/testResults/1.02.2025/NonSimulation_runs/sepsis/memory_usage_sepsis.csv', decimal='.', header=0)
@@ -117,7 +114,7 @@ plt.plot(result_bpic2012['Durata Normalizzata'], result_bpic2012['Memory usage (
 plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='RTF (first 40 740 events)', color='#FF204E', linewidth=3.4, marker = '', markersize=1 , alpha=0.9)
 
 
-plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], label='MS', color='steelblue', linewidth=3.4, marker = '', markersize=1, alpha=1)
+plt.plot(result['Durata Normalizzata'], result['Memory usage (MB)'], label='SC', color='steelblue', linewidth=3.4, marker = '', markersize=1, alpha=1)
 #plt.plot(result_volvo['Durata Normalizzata'], result_volvo['Memory usage (MB)'], label='Road Traffic Fines (GC 01)', color='coral', linewidth=3, marker = '', markersize=2, alpha=1)
 
 plt.plot(result_sepsis['Durata Normalizzata'], result_sepsis['Memory usage (MB)'], label='Sepsis', color='#ff7f00', linewidth=3.4, marker = '', markersize=1, alpha=1)
@@ -134,10 +131,10 @@ plt.plot(result_sepsis['Durata Normalizzata'], result_sepsis['Memory usage (MB)'
 #plt.axhline(y = 185.4, color = 'black', linestyle = 'dotted', label="Total log size", linewidth="4")
 
 
-plt.xticks(fontsize=30)
-plt.yticks(fontsize=30)
-plt.xlabel('Run completion percentage', fontsize = 30, labelpad= 15)
-plt.ylabel('Memory usage [MB]', fontsize = 30,  labelpad= 15)
+plt.xticks(fontsize=34)
+plt.yticks(fontsize=34)
+plt.xlabel('Run completion percentage', fontsize = 34, labelpad= 15)
+plt.ylabel('Memory usage [MB]', fontsize = 34,  labelpad= 15)
 plt.grid(True, linestyle='--')
 plt.tight_layout()
 
@@ -145,11 +142,11 @@ plt.xlim([-3, 100])
 plt.ylim([0,20.5])
 
 
-plt.legend (loc='upper left', fontsize=27)
+plt.legend (loc='upper left', fontsize=29)
 
 #plt.fill_between(result['Durata Normalizzata'],result['Memory usage (MB)'], color = 'azure')
 plt.tight_layout()
 #plt.savefig('/Users/luca/Documents/PythonProjects/TEE_Evaluation/test_memoryusage/memoryusage3.pdf')
-plt.savefig('../data/charts/memoryusageMultiplot_now.pdf')
+plt.savefig('../charts/memoryusageMultiplot_now.pdf')
 #plt.show()
 exit()

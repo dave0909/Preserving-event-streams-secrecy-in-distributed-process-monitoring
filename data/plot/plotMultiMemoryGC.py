@@ -2,9 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Read CSV files
-df_simulation = pd.read_csv('../data/testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
-df_sepsis = pd.read_csv('../data/testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GC10ms.csv', decimal='.', header=0)
-df_volvo = pd.read_csv('../data/testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GC50ms.csv', decimal='.', header=0)
+df_simulation = pd.read_csv('../testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GCdefault.csv', decimal='.', header=0)
+df_sepsis = pd.read_csv('../testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GC10ms.csv', decimal='.', header=0)
+df_volvo = pd.read_csv('../testResults/24.01.2025/trafficFines/memory_usage_trafficFines_GC50ms.csv', decimal='.', header=0)
 
 # Convert timestamps from milliseconds to seconds
 df_simulation['Timestamp'] /= 1000
@@ -80,7 +80,7 @@ plt.plot(result_sepsis['Completion Percentage'], result_sepsis['Memory usage (MB
          label='Custom garbage collection 2', color='blue',
          linewidth=1, marker='', markersize=2, alpha=0.7)
 
-plt.axhline(y=185.4, color='black', linestyle='dashed',
+plt.axhline(y=175, color='black', linestyle='dashed',
             label="Total log size", linewidth=4)
 
 # Add duration text outside the chart (right of the y-axis)
@@ -93,18 +93,18 @@ plt.text(100.3, last_sepsis_y-5, f"{duration_sepsis}",
          color='blue', fontsize=24, va='center', ha='left')
 
 # Customize the plot
-plt.xticks(fontsize=30)
-plt.yticks(fontsize=30)
-plt.xlabel('Run completion percentage', fontsize=30, labelpad=15)
-plt.ylabel('Memory usage [MB]', fontsize=30, labelpad=15)
+plt.xticks(fontsize=34)
+plt.yticks(fontsize=34)
+plt.xlabel('Run completion percentage', fontsize=34, labelpad=15)
+plt.ylabel('Memory usage [MB]', fontsize=34, labelpad=15)
 plt.grid(True, linestyle='--')
 
 # Set axis limits
 plt.xlim([0, 100])  # Extend x-axis to make space for text
 plt.ylim([0, 300])
 
-plt.legend(loc='upper left', fontsize=25)
+plt.legend(loc='upper left', fontsize=27)
 plt.tight_layout()
 
-plt.savefig('../data/testResults/24.01.2025/memoryusageMultiplot_GC.pdf')
+plt.savefig('../charts/memoryusageMultiplot_GC.pdf')
 exit()
