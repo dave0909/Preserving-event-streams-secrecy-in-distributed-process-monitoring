@@ -13,40 +13,90 @@ The Process State Agents act as intermediaries between organizational informatio
 
 The Event Stream Generators operate at the organizational level and serve as the primary data sources for process monitoring. These components extract event data from business process management systems or enterprise information systems, producing structured event streams that capture process execution details.
 
-## Repository Structure
-
 ## Project Structure
 
 The project structure from the root directory is as follows:
 
 ```
+```
 Preserving-event-streams-secrecy-in-distributed-process-monitoring/
 ├── data/
-│   ├── BPMN/
+│   ├── BPMN/...
 │   ├── input/
-│   ├── output/
-│   ├── PLG/
+│   │   ├── extraction_manifest_bpic2012.json
+│   │   ├── extraction_manifest_motivating.json
+│   │   ├── extraction_manifest_sepsis.json
+│   │   ├── extraction_manifest_traffic.json
+│   ├── output/...
+│   ├── PLG/...
 │   ├── plot/
+│   │   ├── plotBarMemory.py
+│   │   ├── plotDelay.py
+│   │   ├── plotDelayVsArrival.py
+│   │   ├── plotMemory.py
+│   │   ├── plotMultiBox.py
+│   │   ├── plotMultiMemory.py
+│   │   ├── plotMultimemoryBroken.py
+│   │   ├── plotMultiMemoryGC.py
+│   │   ├── plotSimVStee_memory.py
+│   │   ├── plotSimVStee.py
 │   ├── PNML/
-│   ├── regoConstraints/
+│   │   ├── bpic2012top10alpha.pnml
+│   │   ├── motivating.pnml
+│   │   ├── sepsis.pnml
+│   │   ├── trafficFines.pnml
+│   ├── regoConstraints/...
 │   ├── xes/
+│   │   ├── bpic2012.xes
+│   │   ├── motivatingnew.xes
+│   │   ├── sepsis.xes
+│   │   ├── trafficFines.xes
 ├── eventStreamGenerator/
-│   ├── PLG-2.0.5/
+│   ├── PLG-2.0.5/...
+│   ├── event_stream_from_log.py
+│   ├── filter_semplified_event_log.py
+│   ├── generate_event_log_from_stream.py
+│   ├── main.py
 ├── processVault/
 │   ├── complianceCheckingLogic/
+│   │   ├── complianceCheckingLogic.go
 │   ├── eventDispatcher/
+│   │   ├── eventDispatcher.go
 │   ├── processStateManager/
+│   │   ├── processStateManager.go
+│   │   ├── violations.go
 │   ├── workflowLogic/
+│   │   ├── workflowLogic.go
 ├── testConfigurations/
 │   ├── simulationMode/
+│   │   ├── runBPIC2012_sim.sh
+│   │   ├── runMotivating_sim.sh
+│   │   ├── runSepsis_sim.sh
+│   │   ├── runTrafficTest_sim.sh
 │   ├── teeMode/
+│   │   ├── runBPIC2012.sh
+│   │   ├── runMotivatingTest.sh
+│   │   ├── runSepsisTest.sh
+│   │   ├── runTrafficTest.sh
+│   ├── complianceCheckingLogicUpdate.go
 ├── utils/
 │   ├── attestation/
+│   │   ├── attestation.go
 │   ├── delayargs/
+│   │   ├── delayargs.go
 │   ├── eventsubmission/
+│   │   ├── eventSubmission.go
 │   ├── petrinet/
+│   │   ├── .gitignore
+│   │   ├── petrinet_test.go
+│   │   ├── petrinet.go
+│   │   ├── readme.md
+│   │   ├── testNet.puml
 │   ├── test/
+│   │   ├── test.go
 │   ├── xes/
+│   │   ├── xes
+│   │   ├── xes.go
 ├── .gitattributes
 ├── .gitignore
 ├── go.mod
@@ -55,6 +105,7 @@ Preserving-event-streams-secrecy-in-distributed-process-monitoring/
 ├── public.pem
 ├── README.md
 ```
+
 
 ## Setup and Running the Project
 
