@@ -3,7 +3,7 @@
 
 This repository contains the published prototype of ProMTEE, a framework to preserve data secrecy for online process monitoring. ProMTEE leverages trusted applications running in Intel SGX TEEs to execute control flow and compliance checking monitoring tasks, while hiding sensitive information of the input events.
 
-##Framework Overview
+## Framework Overview
 
 ProMTEE is centered around the Process Vault, Process State Agents, and Event Stream Generators, ensuring secure and efficient online process monitoring.
 The Process Vault is the core computational unit of the framework, responsible for securely maintaining and updating the process state. It is implemented as a EGo Trusted Application running within a Intel SGX Trusted Execution Environment (TEE), which guarantees data confidentiality and code integrity. Internally, the Process Vault consists of several components: the Event Dispatcher, which receives and decrypts incoming events, the Process State Manager, which processes these events and updates the process state, and the Process Trackers, which execute monitoring tasks such as control flow validation and compliance verification. Once deployed within the TEE, the Process Vault becomes immutable and resistant to external tampering, ensuring that event data remains protected from unauthorized access.
