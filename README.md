@@ -55,6 +55,21 @@ To set up and run the project, you need to have the following dependencies insta
 
 4. Set up ego (refer to the official documentation for detailed instructions):
 
+### Docker Image
+
+You can also use our Docker image to run the project. The Docker image contains all the necessary dependencies and configurations to run ProMTEE.
+
+To pull the Docker image, use the following command:
+
+```sh
+docker pull dave0909/promtee
+```
+
+You can run the Docker container using the following command:
+
+```sh
+docker run -it dave0909/promtee
+```
 
 ### Running the Project
 
@@ -119,6 +134,3 @@ cd testConfigurations/teeMode
 ./runBPIC2012.sh
 ```
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
