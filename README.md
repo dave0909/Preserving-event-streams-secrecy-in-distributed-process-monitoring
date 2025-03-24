@@ -1,3 +1,5 @@
+![ProMTEE logo](https://github.com/user-attachments/assets/74a7fe46-ba6a-40fd-9e45-80e458f709e1)
+
 # ProMTEE: Preserving data secrecy for online process monitoring
 
 This repository contains the published prototype of ProMTEE, a framework to preserve data secrecy for online process monitoring. ProMTEE leverages trusted applications running in Intel SGX TEEs to execute control flow and compliance checking monitoring tasks, while hiding sensitive information of the input events.
