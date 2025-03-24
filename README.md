@@ -115,7 +115,7 @@ To set up and run the project, you need to have the following dependencies insta
 - Python (version 3.6 or later)
 - pm4py (Python library for process mining)
 - ego (Edgeless Systems' confidential computing framework)
-- INTEL SGX enabled CPU (required to run the process vault in non-simulation mode)
+- Intel SGX enabled CPU (required to run the process vault in non-simulation mode)
 
 ### Environment Setup
 
