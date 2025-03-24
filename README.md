@@ -106,8 +106,7 @@ Preserving-event-streams-secrecy-in-distributed-process-monitoring/
 ```
 
 
-## Setup and Running the Project
-
+## Setup
 ### Dependencies
 
 To set up and run the project, you need to have the following dependencies installed:
@@ -157,7 +156,27 @@ You can run the Docker container using the following command:
 docker run -it dave0909/promtee
 ```
 
-### Running the Project
+## Running the Project
+### Bootstrap a Process Vault
+> [!IMPORTANT]  
+> To run a Process Vault, you need an Intel SGX-enabled machine. Ensure the correct installation of the Intel SGX and EGo SDKs.
+
+To bootstrap a Process Vault instance in the TEE, you need to use the processVaultCompiler.py script. This script fetches the input process specifications and generates the source of the process vault to launch. The command to use the process vault compiler is as follows:
+   ```sh
+   python3 processVaultCompiler.py ./data/PNML/motivatingreduced.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 40000 false 200
+   ```
+   Parameters for running the process vault:
+   - `bpmn_file_path`: The path to the BPMN or PNML file.
+   - `output_go_file_path`: The path to the output Go file for the workflow logic.
+   - `constraint_folder_path`: The path to the folder containing the Rego constraint files.
+   - `output_go_file_path_compliance`: The path to the output Go file for the compliance checking logic.
+   - `event_dispatcher_address`: The address to bind the RPC server for the event dispatcher.
+   - `extraction_manifest_file_path`: The path to the extraction manifest file.
+   - `isInSimulation`: Boolean indicating whether to run in simulation mode.
+   - `isInTesting`: Boolean indicating whether to run in test mode.
+   - `nEvents`: The number of events to process.
+   - `withExternalQueue`: Boolean indicating whether to enable external query.
+   - `slidingWindowSize`: The size of the sliding window for event processing.
 
 1. Start the process state agent:
 
@@ -172,25 +191,6 @@ docker run -it dave0909/promtee
    - `skippAttestation`: Boolean indicating whether to skip attestation.
    - `testMode`: Boolean indicating whether to run in test mode.
 
-2. Start the process vault:
-
-   ```sh
-   cd processVault
-   python3 processVaultCompiler.py ./data/PNML/motivatingreduced.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 40000 false 200
-   ```
-
-   Parameters for running the process vault:
-   - `bpmn_file_path`: The path to the BPMN or PNML file.
-   - `output_go_file_path`: The path to the output Go file for the workflow logic.
-   - `constraint_folder_path`: The path to the folder containing the Rego constraint files.
-   - `output_go_file_path_compliance`: The path to the output Go file for the compliance checking logic.
-   - `event_dispatcher_address`: The address to bind the RPC server for the event dispatcher.
-   - `extraction_manifest_file_path`: The path to the extraction manifest file.
-   - `isInSimulation`: Boolean indicating whether to run in simulation mode.
-   - `isInTesting`: Boolean indicating whether to run in test mode.
-   - `nEvents`: The number of events to process.
-   - `withExternalQueue`: Boolean indicating whether to enable external query.
-   - `slidingWindowSize`: The size of the sliding window for event processing.
 
 3. Start the event stream generator:
 
