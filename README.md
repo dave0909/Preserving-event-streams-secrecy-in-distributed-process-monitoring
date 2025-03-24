@@ -18,7 +18,6 @@ The Event Stream Generators operate at the organizational level and serve as the
 The project structure from the root directory is as follows:
 
 ```
-```
 Preserving-event-streams-secrecy-in-distributed-process-monitoring/
 ├── data/
 │   ├── BPMN/...
