@@ -15,13 +15,46 @@ The Event Stream Generators operate at the organizational level and serve as the
 
 ## Repository Structure
 
-The repository is organized into the following directories:
+## Project Structure
 
-- `data`: Contains BPMN, PNML, and XES files, as well as input and output data.
-- `eventStreamGenerator`: Contains Python scripts for generating and processing event logs.
-- `processVault`: Contains Go files for compliance checking logic, event dispatching, and process state management.
-- `utils`: Contains utility Go files for attestation, delay arguments, event submission, and Petri net operations.
-- `testConfigurations`: Contains scripts for running tests in different modes.
+The project structure from the root directory is as follows:
+
+```
+Preserving-event-streams-secrecy-in-distributed-process-monitoring/
+├── data/
+│   ├── BPMN/
+│   ├── input/
+│   ├── output/
+│   ├── PLG/
+│   ├── plot/
+│   ├── PNML/
+│   ├── regoConstraints/
+│   ├── xes/
+├── eventStreamGenerator/
+│   ├── PLG-2.0.5/
+├── processVault/
+│   ├── complianceCheckingLogic/
+│   ├── eventDispatcher/
+│   ├── processStateManager/
+│   ├── workflowLogic/
+├── testConfigurations/
+│   ├── simulationMode/
+│   ├── teeMode/
+├── utils/
+│   ├── attestation/
+│   ├── delayargs/
+│   ├── eventsubmission/
+│   ├── petrinet/
+│   ├── test/
+│   ├── xes/
+├── .gitattributes
+├── .gitignore
+├── go.mod
+├── main.go
+├── private.pem
+├── public.pem
+├── README.md
+```
 
 ## Setup and Running the Project
 
