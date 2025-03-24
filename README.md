@@ -125,7 +125,7 @@ The repository includes scripts for running tests in different modes, located in
 - `simulationMode`: Scripts for running tests in simulation mode.
 - `teeMode`: Scripts for running tests in Trusted Execution Environment (TEE) mode.
 
-### Running a Test
+### Running our tests
 
 To run a test, navigate to the appropriate test mode directory and execute the desired test script. For example, to run the BPIC2012 test in TEE mode:
 
