@@ -119,7 +119,7 @@ To bootstrap a Process Vault instance in the TEE, you need to use the processVau
    - `withExternalQueue`: Boolean indicating whether to enable external query.
    - `slidingWindowSize`: The size of the sliding window for event processing.
 
-## Start the process state agent
+### Start the Process State Agent
 To start up a process state agent, navigate to its folder and use the following command.
    ```sh
    cd procesStateAgent
@@ -132,7 +132,7 @@ To start up a process state agent, navigate to its folder and use the following 
    - `skippAttestation`: Boolean indicating whether to skip attestation.
    - `testMode`: Boolean indicating whether to run in test mode.
 
-## Start the event stream generator
+### Start the Event Stream Generator
 To simulate a process engine and generate XES events to be transmitted to the Process Vault, we developed a Python script taking as input an XES event log. You can use it as follows:
    ```sh
    cd eventStreamGenerator
