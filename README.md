@@ -42,6 +42,7 @@ Preserving-event-streams-secrecy-in-distributed-process-monitoring/
 ├── testConfigurations/ : this folder contains the sh files to reproduce our tests
 │   ├── simulationMode/ : configurations to run the tests in simulation mode (non-TEE) 
 │   ├── teeMode/ : configurations to run the tests in TEE mode
+├── queue/ : scripts to handle a queue of events outside the TEE
 ├── utils/ : contains utility modules
 ├── main.go : main of the Process Vault
 ```
@@ -98,6 +99,10 @@ docker run -it dave0909/promtee
 ```
 
 ## Running the Project
+To run our prototype you need to execute these three steps:
+- 1) Bootstrap a Process Vault instance using a the `processVaultCompiler.py` script
+- 2) Start a Process State Agent that connects to the Process Vault
+- 3) Start the Event Stream Engine simulator to generate XES events from an event log 
 ### Bootstrap a Process Vault
 > [!IMPORTANT]  
 > To run a Process Vault, you need an Intel SGX-enabled machine. Ensure the correct installation of the Intel SGX and EGo SDKs.
@@ -106,7 +111,7 @@ To bootstrap a Process Vault instance in the TEE, you need to use the processVau
    ```sh
    python3 processVaultCompiler.py ./data/PNML/motivatingreduced.pnml ./workflowLogic/workflowLogic.go ./data/regoConstraints/motivatingConstraints ./complianceCheckingLogic/complianceCheckingLogic.go localhost:6066 data/input/extraction_manifest_motivating.json false true 40000 false 200
    ```
-   Parameters for running the process vault:
+   Parameters for running the Process Vault Compiler:
    - `bpmn_file_path`: The path to the BPMN or PNML file.
    - `output_go_file_path`: The path to the output Go file for the workflow logic.
    - `constraint_folder_path`: The path to the folder containing the Rego constraint files.
@@ -120,7 +125,7 @@ To bootstrap a Process Vault instance in the TEE, you need to use the processVau
    - `slidingWindowSize`: The size of the sliding window for event processing.
 
 ### Start the Process State Agent
-To start up a process state agent, navigate to its folder and use the following command.
+To start up a Process State Agent, navigate to its folder and use the following command.
    ```sh
    cd procesStateAgent
    ego-go run processStateAgent.go localhost:6065 localhost:1234 false true
@@ -139,17 +144,23 @@ To simulate a process engine and generate XES events to be transmitted to the Pr
    python3 event_stream_from_log.py ../data/xes/motivatingnew.xes
    ```
 
-   Parameters for running the event stream generator:
+   Parameters for running the Python script to simulate an Event Stream Generator:
    - `log_path`: The path to the XES event log file.
 
-## Running Tests
+## Tests
+This repository contains runtime experiments on the Process Vault's memory usage and responsiveness. For these tests, we employed the event logs contained in the `/data/xes` folder:
+- **motivatingnew.xes**: a synthetic event log modelling a supply chain scenario
+- **sepsis.xes**:  a real-world event log containing events of sepsis cases from a hospital [(sepsis documentation)](https://data.4tu.nl/articles/dataset/Sepsis_Cases_-_Event_Log/12707639)
+- **bpic2012.xes**: a real-world event log of a loan application process [(BPIC 2012 documentation)](https://data.4tu.nl/articles/_/12689204/1)
+- **trafficFines.xes** a real-world event log of an information system managing road traffic fines [(road traffic fines documentation)](https://data.4tu.nl/articles/dataset/Road_Traffic_Fine_Management_Process/12683249)
 
 ### Test Configurations
+In `/testConfigurations`, we collect the SH scripts to reproduce the test runs for each event log. The available test modes are:
 
-The repository includes scripts for running tests in different modes, located in the `testConfigurations` directory. The available test modes are:
+- `simulationMode`: running tests in simulation mode (without the TEE)
+- `teeMode`: running tests in Trusted Execution Environment (TEE) mode
 
-- `simulationMode`: Scripts for running tests in simulation mode.
-- `teeMode`: Scripts for running tests in Trusted Execution Environment (TEE) mode.
+All the SH scripts launches a Process Vault in the TEE, initiates a Process State Agent, and start an Event Stream Engine to generate XES events from a given event log.
 
 ### Running our tests
 
@@ -159,4 +170,12 @@ To run a test, navigate to the appropriate test mode directory and execute the d
 cd testConfigurations/teeMode
 ./runBPIC2012.sh
 ```
+Depending on the specific test, the execution of the experiment may take a while. The end of the test is notified within the terminal.
+
+### Results and plots
+At the end of each test, you can find the observation results in `data/output/`. We distinguish three types of files:
+- `memory_usage.csv`: contains a set of points (timestamp, memory usage) collected in the course of the execution
+- `delay_results.csv`: each row i contains the generation timestamp of the i-th event (second column) and its processing timestamp (third column) within the Process Vault 
+- `latency.csv`: contains the duration of the test, the average duration of the state update (between all the processed events), the minimum state update latence, the maximum state update latency, and the standard deviation 
+
 
