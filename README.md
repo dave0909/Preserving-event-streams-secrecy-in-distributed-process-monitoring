@@ -160,7 +160,7 @@ In `/testConfigurations`, we collect the SH scripts to reproduce the test runs f
 - `simulationMode`: running tests in simulation mode (without the TEE)
 - `teeMode`: running tests in Trusted Execution Environment (TEE) mode
 
-All the SH scripts launches a Process Vault in the TEE, initiates a Process State Agent, and start an Event Stream Engine to generate XES events from a given event log.
+All the SH scripts launch a Process Vault in the TEE, initiate a Process State Agent, and start an Event Stream Engine to generate XES events from a given event log.
 
 ### Running our tests
 
@@ -172,10 +172,18 @@ cd testConfigurations/teeMode
 ```
 Depending on the specific test, the execution of the experiment may take a while. The end of the test is notified within the terminal.
 
-### Results and plots
-At the end of each test, you can find the observation results in `data/output/`. We distinguish three types of files:
+### Results
+At the end of each test, you can find the observation results in `data/output/`. We distinguish three types of result files:
 - `memory_usage.csv`: contains a set of points (timestamp, memory usage) collected in the course of the execution
 - `delay_results.csv`: each row i contains the generation timestamp of the i-th event (second column) and its processing timestamp (third column) within the Process Vault 
-- `latency.csv`: contains the duration of the test, the average duration of the state update (between all the processed events), the minimum state update latence, the maximum state update latency, and the standard deviation 
+- `latency.csv`: contains the duration of the test, the average duration of the state update (between all the processed events), the minimum state update latency, the maximum state update latency, and the standard deviation
 
+We collect these files resulting from our tests in the `data/testResults` folder. In this location, we collect the profiling files according to their collection date.
 
+###Plots
+You can use the files resulting from each test run to produce plots via the Python scripts collected in the  `data/plot`. To use these files, you may need to change the path of the input files or adjust the scale parameters of the axis. We describe the usage of each file as follows:
+Script | Input files | Description 
+--- | --- | --- 
+`plotMemory.py` | `memory_usage.csv` | It generates the plot line describing the memory usage trend at runtime
+`plotMultiMemory.py` | `memory_usage.csv` | It generates a plot that compares multiple memory usage trends, deriving from more experiments
+`plotMultiMemoryGC.py` | `memory_usage.csv` | Same as the previous line, but we use it to compare multiple garbage collection policies with the same dataset (Road Traffic Fines)
