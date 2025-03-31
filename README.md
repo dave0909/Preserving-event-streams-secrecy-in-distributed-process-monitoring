@@ -1,4 +1,4 @@
-![ProMTEE logo](https://github.com/user-attachments/assets/74a7fe46-ba6a-40fd-9e45-80e458f709e1)
+![ProMTEE logo](ProMTEE.png)
 
 # ProMTEE: Preserving data secrecy for online process monitoring
 
