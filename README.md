@@ -193,3 +193,6 @@ Script | Test file | Description
 `plotMultimemoryBroken.py` | `memory_usage.csv` | It generates a plot with a broken y-axis comparing memory usage trends for multiple datasets
 `plotSimVStee.py` | `delay_result.csv` | It generates a bar plot comparing the observation lag overhead between native mode and TEE mode. You have to manually compute the average delay from the `delay_result.csv` output files from TEE and Simulation runs. Insert these average delays into a file like `output/testResults/19.02.2025/TEEvsSIM.csv` and run the script.
 
+### Memory Usage
+![Memory usage multilog](memoryusage)
+
