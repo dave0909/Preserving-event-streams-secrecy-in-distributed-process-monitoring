@@ -210,7 +210,7 @@ To assess the responsiveness of our solution (Obj. O3), we first verify that the
 <img src="responsiveness.png" width="1000">
 *Figure 4: Generated with `data/plots/plotBarMemory.py`*
 
-<img src="barplotdelay.png" width=400">
+<img src="barplotdelay.png" width="400">
 *Figure 5: Generated with `data/plots/plotSimVStee.py`*
 
 
